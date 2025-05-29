@@ -6,6 +6,7 @@ import time
 
 #hola delfi!
 #holaaa
+#como estas?
 
 #PAGINA EN GOOGLE 
 st.set_page_config(page_title="Simulador Franck-Hertz", layout="centered")
