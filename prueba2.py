@@ -116,14 +116,14 @@ while st.session_state.animando:
             dist = np.linalg.norm(posiciones[i] - atom)
             if dist < 0.3:
                 energia_cinetica = 0.5 * 9.1e-31 * (velocidades[i, 0] / 1e-6) ** 2
-                energia_exc_julios = pot_excitacion * 1.6e-19
-                n = int(energia_cinetica // energia_exc_julios)
+                energia_exc_jules = pot_excitacion * 1.6e-19
+                n = int(energia_cinetica // energia_exc_jules)
 
                 if n >= 1:
                     # Probabilidad simple de colisión inelástica
-                    prob_colision = min(1.0, (energia_cinetica / energia_exc_julios - 1) * 0.2)
+                    prob_colision = min(1.0, (energia_cinetica / energia_exc_jules - 1) * 0.2)
                     if np.random.rand() < prob_colision:
-                        energia_perdida = n * energia_exc_julios
+                        energia_perdida = n * energia_exc_jules
                         energia_restante = energia_cinetica - energia_perdida
                         nueva_velocidad = np.sqrt(2 * energia_restante / 9.1e-31) * 1e-6
                         velocidades[i, 0] = nueva_velocidad
