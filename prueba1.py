@@ -38,26 +38,21 @@ voltaje_max = st.slider("Voltaje de aceleración (V)", 0.0, 50.0, 0.0, 0.1)
 num_electrones = st.slider("Número de electrones", 5, 100, 20)
 
 # Función de corriente simulada
-
-def corriente_simulada(V, e_exc):
+def corriente_simulada(V, e_exc, num_electrones):
     corriente = []
     for v in V:
         base = v ** 1.2
         residuo = v % e_exc
-        if residuo < 0.3:
-            caida = 0.4
-        else:
-            caida = 1.0
-        corriente.append(base * caida)
-    return np.array(corriente)
+        caída = 0.4 if residuo < 0.3 else 1.0
+        corriente.append(base * caída)
+    return np.array(corriente) * num_electrones
 
 # Gráfico de corriente vs voltaje
 voltajes = np.linspace(0, 50, 500)
-corrientes = corriente_simulada(voltajes, e_exc)
-corriente_actual = corriente_simulada([voltaje_max], e_exc)[0]
+corrientes = corriente_simulada(voltajes, e_exc, num_electrones)
+corriente_actual = corriente_simulada([voltaje_max], e_exc, num_electrones)[0]
 st.write(f" Corriente estimada para {voltaje_max:.1f} V: **{corriente_actual:.3f}** (unidades arbitrarias)")
-
-corrientes_visibles = corriente_simulada(voltajes, e_exc)
+corrientes_visibles = corriente_simulada(voltajes, e_exc, num_electrones)
 corrientes_visibles[voltajes > voltaje_max] = np.nan
 
 fig, ax = plt.subplots()
@@ -80,11 +75,14 @@ np.random.seed(1)
 posiciones = np.zeros((num_electrones, 2))
 posiciones[:, 1] = np.random.uniform(0.5, altura - 0.5, num_electrones)
 velocidades = np.zeros((num_electrones, 2))
-velocidades[:, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6
+velocidades[:, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6  # v = sqrt(2qV/m)
+
+# Cooldown por electrón (para evitar múltiples colisiones seguidas)
+cooldown = np.zeros(num_electrones)
 
 # Posiciones de átomos
-num_atom = 10
-pos_atoms_x = np.linspace(2, 8, num_atom)
+num_atom = 30
+pos_atoms_x = np.linspace(1, 10, num_atom)
 pos_atoms_y = np.random.uniform(1, altura - 1, num_atom)
 atoms = np.column_stack((pos_atoms_x, pos_atoms_y))
 
@@ -106,12 +104,28 @@ grafico = st.empty()
 while st.session_state.animando:
     posiciones[:, 0] += velocidades[:, 0] * dt
 
-    # Colisiones con átomos
     for i in range(num_electrones):
+        if cooldown[i] > 0:
+            cooldown[i] -= 1
+            continue
+
         for atom in atoms:
             dist = np.linalg.norm(posiciones[i] - atom)
             if dist < 0.3:
-                velocidades[i, 0] *= 0.5  # pierde velocidad
+                energia_cinetica = 0.5 * 9.1e-31 * (velocidades[i, 0] / 1e-6) ** 2
+                energia_exc_julios = e_exc * 1.6e-19
+                n = int(energia_cinetica // energia_exc_julios)
+
+                if n >= 1:
+                    # Probabilidad simple de colisión inelástica
+                    prob_colision = min(1.0, (energia_cinetica / energia_exc_julios - 1) * 0.2)
+                    if np.random.rand() < prob_colision:
+                        energia_perdida = n * energia_exc_julios
+                        energia_restante = energia_cinetica - energia_perdida
+                        nueva_velocidad = np.sqrt(2 * energia_restante / 9.1e-31) * 1e-6
+                        velocidades[i, 0] = nueva_velocidad
+                        cooldown[i] = 10
+                break  # una sola colisión por frame
 
     # Reposicionar electrones que llegan al final
     reiniciar = posiciones[:, 0] > ancho
