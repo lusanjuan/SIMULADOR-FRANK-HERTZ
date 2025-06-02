@@ -11,10 +11,10 @@ st.set_page_config(page_title="Simulador Franck-Hertz", layout="centered")
 st.markdown("""
     <style>
         .stApp {
-            background-color: #050314;
+            background-color: #09120b;
         }
         h1 {
-            color: #white;
+            color: #ffffff;
             text-align: center;
             font-family: 'Segoe UI', sans-serif;
         }
@@ -44,17 +44,22 @@ def corriente_simulada(V, e_exc, num_electrones, A=1.0, B=0.7, alpha=1.2, phi=0)
     corriente[V <= 0] = 0  # Corriente nula para voltaje negativo o cero
     return corriente * num_electrones
   
+st.markdown("""
+**Nota:** la corriente simulada no representa un valor físico real, sino una **estimación cualitativa** del comportamiento.
+Está **escalada por el número de electrones simulados**, por lo que un mayor número de electrones producirá valores de corriente proporcionalmente mayores.
+""")
+  
+
 # GRAFICO DE LA CORRIENTE EN FUNCION DEL VOLTAJE
-voltajes = np.linspace(0, 50, 500)
-corrientes = corriente_simulada(voltajes, pot_excitacion, num_electrones)
+voltaje = np.linspace(0, 50, 500)
 corriente_actual = corriente_simulada([voltaje_max], pot_excitacion, num_electrones)[0]
 st.write(f" Corriente estimada para {voltaje_max:.1f} V: **{corriente_actual:.3f}** (unidades arbitrarias)")
-corrientes_visibles = corriente_simulada(voltajes, pot_excitacion, num_electrones)
-corrientes_visibles[voltajes > voltaje_max] = np.nan
+corrientes_visibles = corriente_simulada(voltaje, pot_excitacion, num_electrones)
+corrientes_visibles[voltaje > voltaje_max] = np.nan # en los puntos que superan el voltaje_max, para que el gráfico se corte ahí y dé una sensación de "progreso".
 
 
 fig, ax = plt.subplots()
-ax.plot(voltajes, corrientes_visibles, color="blue", label="Corriente simulada hasta voltaje actual")
+ax.plot(voltaje, corrientes_visibles, color="blue", label="Corriente simulada hasta voltaje actual")
 ax.axvline(voltaje_max, color="red", linestyle="--", label=f"Voltaje actual: {voltaje_max:.1f} V")
 ax.set_xlabel("Voltaje (V)")
 ax.set_ylabel("Corriente (u.a.)")
