@@ -14,7 +14,7 @@ st.markdown("""
             background-color: #050314;
         }
         h1 {
-            color: #1E90FF;
+            color: #white;
             text-align: center;
             font-family: 'Segoe UI', sans-serif;
         }
