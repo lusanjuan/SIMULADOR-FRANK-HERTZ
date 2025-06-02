@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import time
 
-# Configuración inicial de la página
+# LO QUE SE VE EN LA PESTAÑA
 st.set_page_config(page_title="Simulador Franck-Hertz", layout="centered")
 
-# Fondo y estilo
+# FONDO Y ESTILO
 st.markdown("""
     <style>
         .stApp {
@@ -21,23 +21,23 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Título
+# TITULO
 st.markdown("""
     <h1>Experimento de Franck y Hertz</h1>
 """, unsafe_allow_html=True)
 
-# Descripción
+# CUERPO DEL TEXTO
 st.markdown("""
 Este simulador te permite explorar cómo los electrones colisionan con átomos a medida que aumenta el voltaje. 
 Observa los picos de corriente cuando los electrones pierden energía por excitación atómica. 
 """)
 
-# Parámetros ajustables
-e_exc = st.slider("Potencial de excitación (eV)", 0.1, 20.0, 4.9, 0.1)
+# SLIDERS
+pot_excitacion = st.slider("Potencial de excitación (eV)", 0.1, 20.0, 4.9, 0.1)
 voltaje_max = st.slider("Voltaje de aceleración (V)", 0.0, 50.0, 0.0, 0.1)
 num_electrones = st.slider("Número de electrones", 5, 100, 20)
 
-# Función de corriente simulada
+# CORRIENTE EN FUNCION DEL VOLTAJE Y DEL NUMERO DE ELECTRONES 
 def corriente_simulada(V, e_exc, num_electrones):
     corriente = []
     for v in V:
@@ -47,13 +47,14 @@ def corriente_simulada(V, e_exc, num_electrones):
         corriente.append(base * caída)
     return np.array(corriente) * num_electrones
 
-# Gráfico de corriente vs voltaje
+# GRAFICO DE LA CORRIENTE EN FUNCION DEL VOLTAJE
 voltajes = np.linspace(0, 50, 500)
-corrientes = corriente_simulada(voltajes, e_exc, num_electrones)
-corriente_actual = corriente_simulada([voltaje_max], e_exc, num_electrones)[0]
+corrientes = corriente_simulada(voltajes, pot_excitacion, num_electrones)
+corriente_actual = corriente_simulada([voltaje_max], pot_excitacion, num_electrones)[0]
 st.write(f" Corriente estimada para {voltaje_max:.1f} V: **{corriente_actual:.3f}** (unidades arbitrarias)")
-corrientes_visibles = corriente_simulada(voltajes, e_exc, num_electrones)
+corrientes_visibles = corriente_simulada(voltajes, pot_excitacion, num_electrones)
 corrientes_visibles[voltajes > voltaje_max] = np.nan
+
 
 fig, ax = plt.subplots()
 ax.plot(voltajes, corrientes_visibles, color="blue", label="Corriente simulada hasta voltaje actual")
@@ -80,10 +81,10 @@ velocidades[:, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6  # v = s
 # Cooldown por electrón (para evitar múltiples colisiones seguidas)
 cooldown = np.zeros(num_electrones)
 
-# Posiciones de átomos
-num_atom = 30
-pos_atoms_x = np.linspace(1, 10, num_atom)
-pos_atoms_y = np.random.uniform(1, altura - 1, num_atom)
+# NUMERO Y POSICION DE LOS ATOMOS
+num_atom = 70
+pos_atoms_x = np.linspace(1, 13, num_atom)
+pos_atoms_y = np.random.uniform(0, altura , num_atom)
 atoms = np.column_stack((pos_atoms_x, pos_atoms_y))
 
 # Controles de animación
@@ -113,7 +114,7 @@ while st.session_state.animando:
             dist = np.linalg.norm(posiciones[i] - atom)
             if dist < 0.3:
                 energia_cinetica = 0.5 * 9.1e-31 * (velocidades[i, 0] / 1e-6) ** 2
-                energia_exc_julios = e_exc * 1.6e-19
+                energia_exc_julios = pot_excitacion * 1.6e-19
                 n = int(energia_cinetica // energia_exc_julios)
 
                 if n >= 1:
@@ -134,14 +135,15 @@ while st.session_state.animando:
     velocidades[reiniciar, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6
 
     # Graficar
-    fig, ax = plt.subplots(figsize=(10, 4))
+    fig, ax = plt.subplots(figsize=(13, 7)) #ANCHO Y ALTO DEL TUBO 
     tubo = patches.Rectangle((0, 0), ancho, altura, linewidth=1.5, edgecolor='white', facecolor='black')
     ax.add_patch(tubo)
 
+#ATOMOS DE HG
     for atom in atoms:
-        circulo = plt.Circle((atom[0], atom[1]), 0.15, color='orange')
+        circulo = plt.Circle((atom[0], atom[1]), 0.10, color='orange')
         ax.add_patch(circulo)
-
+    
     ax.scatter(posiciones[:, 0], posiciones[:, 1], color='cyan', label='Electrones')
     ax.set_xlim(0, ancho)
     ax.set_ylim(0, altura)
