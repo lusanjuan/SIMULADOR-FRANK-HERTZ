@@ -4,37 +4,26 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import time
 
-# LO QUE SE VE EN LA PESTAÑA
+# ---------------- CONFIGURACIÓN DE PÁGINA Y ESTILO ----------------
 st.set_page_config(page_title="Simulador Franck-Hertz", layout="centered")
 
-# FONDO Y ESTILO
 st.markdown("""
     <style>
-    
         .block-container {
             padding-left: 1rem;
             padding-right: 1rem;
             max-width: 80% !important;
         }
 
-        /* Fondo de la app */
         .stApp {
             background-color: #1b2d40;
         }
 
-        /* Título h1 */
-        h1 {
-            color: #ffffff !important;
-            text-align: center;
+        h1, h2, h3, label, .stMarkdown, .css-qrbaxs {
+            color: white !important;
             font-family: 'Segoe UI', sans-serif;
         }
 
-        /* Color blanco para el texto general */
-        .stApp, h2, h3, label, .css-10trblm, .css-1cpxqw2, .css-qrbaxs, .stMarkdown {
-            color: white !important;
-        }
-
-        /* Estilo personalizado para botones */
         .stButton > button {
             background-color: #0a141a;
             color: white !important;
@@ -48,26 +37,7 @@ st.markdown("""
             background-color: #444444;
             color: white !important;
         }
-    </style>
-""", unsafe_allow_html=True)
 
-
-# TITULO
-st.markdown("""
-    <h1>Experimento de Franck y Hertz</h1>
-""", unsafe_allow_html=True)
-
-# CUERPO DEL TEXTO
-st.markdown("""
-Este simulador te permite explorar cómo los electrones colisionan con átomos a medida que aumenta el voltaje. 
-Observa los picos de corriente cuando los electrones pierden energía por excitación atómica. 
-""")
-
-
-#ESTILO DE LOS SLIDERS 
-st.markdown("""
-    <style>
-        /* Estilo para los sliders */
         .stSlider {
             background-color: #0a141a;
             padding: 1rem;
@@ -76,108 +46,111 @@ st.markdown("""
             margin-bottom: 1rem;
         }
 
-        /* Texto del label del slider */
         .stSlider label {
             color: white !important;
             font-weight: bold;
         }
 
-        /* Track del slider (la línea) */
         .stSlider .css-14rggix {
             background-color: #1f1f1f !important;
             border-radius: 5px;
         }
 
-        /* Thumb del slider (la bolita que se arrastra) */
         .stSlider .css-1c5cd5h {
             background-color: #00ffcc !important;
         }
 
-        /* Valor del slider */
         .stSlider .css-1cpxqw2 {
             color: white !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# Crea dos columnas: sliders a la izquierda (col1), gráfico a la derecha (col2)
-col1, col2 = st.columns([1, 2])  # [1, 2] = col2 será el doble de ancha
 
-# SLIDERS
-pot_excitacion = st.slider("Potencial de excitación (eV)", 0.1, 20.0, 4.9, 0.1)
-voltaje_max = st.slider("Voltaje de aceleración (V)", 0.0, 50.0, 0.0, 0.1)
-num_electrones = st.slider("Número de electrones", 5, 100, 20)
+# ---------------- TÍTULO Y DESCRIPCIÓN ----------------
+st.markdown("<h1>Experimento de Franck y Hertz</h1>", unsafe_allow_html=True)
+st.markdown("""
+Este simulador te permite explorar cómo los electrones colisionan con átomos a medida que aumenta el voltaje. 
+Observa los picos de corriente cuando los electrones pierden energía por excitación atómica.
+""")
 
-# CORRIENTE EN FUNCION DEL VOLTAJE Y DEL NUMERO DE ELECTRONES 
+
+# ---------------- PARTE 1: SLIDERS Y GRÁFICO ----------------
+sliders_col, grafico_col = st.columns([1, 2])
+
+with sliders_col:
+    pot_excitacion = st.slider("Potencial de excitación (eV)", 0.1, 20.0, 4.9, 0.1)
+    voltaje_max = st.slider("Voltaje de aceleración (V)", 0.0, 50.0, 0.0, 0.1)
+    num_electrones = st.slider("Número de electrones", 5, 100, 20)
+
 def corriente_simulada(V, e_exc, num_electrones, A=1.0, B=0.7, alpha=1.2, phi=0):
     V = np.array(V)
     corriente = A * V**alpha * (1 - B * np.sin(np.pi * V / e_exc + phi)**2)
-    corriente[V <= 0] = 0  # Corriente nula para voltaje negativo o cero
+    corriente[V <= 0] = 0
     return corriente * num_electrones
-  
-st.markdown("""
-**Nota:** la corriente simulada no representa un valor físico real, sino una **estimación cualitativa** del comportamiento.
-Está **escalada por el número de electrones simulados**, por lo que un mayor número de electrones producirá valores de corriente proporcionalmente mayores.
-""")
-  
 
-# GRAFICO DE LA CORRIENTE EN FUNCION DEL VOLTAJE
 voltaje = np.linspace(0, 50, 500)
 corriente_actual = corriente_simulada([voltaje_max], pot_excitacion, num_electrones)[0]
-st.write(f" Corriente estimada para {voltaje_max:.1f} V: **{corriente_actual:.3f}** (unidades arbitrarias)")
+with sliders_col:
+    st.markdown(f"Corriente estimada para {voltaje_max:.1f} V: **{corriente_actual:.3f}** (u.a.)")
+st.markdown("**Nota:** la corriente simulada es cualitativa y escalada al número de electrones.")
+
 corrientes_visibles = corriente_simulada(voltaje, pot_excitacion, num_electrones)
-corrientes_visibles[voltaje > voltaje_max] = np.nan # en los puntos que superan el voltaje_max, para que el gráfico se corte ahí y dé una sensación de "progreso".
+corrientes_visibles[voltaje > voltaje_max] = np.nan
+
+with grafico_col:
+    fig, ax = plt.subplots()
+    ax.plot(voltaje, corrientes_visibles, color="blue", label="Corriente simulada")
+    ax.axvline(voltaje_max, color="red", linestyle="--", label=f"Voltaje actual: {voltaje_max:.1f} V")
+    ax.set_xlabel("Voltaje (V)")
+    ax.set_ylabel("Corriente (u.a.)")
+    ax.set_title("Corriente vs Voltaje")
+    ax.legend()
+    st.pyplot(fig)
 
 
-fig, ax = plt.subplots()
-ax.plot(voltaje, corrientes_visibles, color="blue", label="Corriente simulada hasta voltaje actual")
-ax.axvline(voltaje_max, color="red", linestyle="--", label=f"Voltaje actual: {voltaje_max:.1f} V")
-ax.set_xlabel("Voltaje (V)")
-ax.set_ylabel("Corriente (u.a.)")
-ax.set_title("Corriente vs Voltaje")
-ax.legend()
-st.pyplot(fig)
+# ---------------- PARTE 2: SIMULACIÓN VISUAL ----------------
+st.markdown("<h2>Simulación visual del experimento</h2>", unsafe_allow_html=True)
 
-# ------------------------------------Simulación Visual -------------------------
-st.title("Simulación visual del experimento de Franck y Hertz")
-ancho = 10
-altura = 5
+ancho, altura = 10, 5
 dt = 0.1
-
-# Posiciones y velocidades iniciales
 np.random.seed(1)
+
 posiciones = np.zeros((num_electrones, 2))
 posiciones[:, 1] = np.random.uniform(0.5, altura - 0.5, num_electrones)
-velocidades = np.zeros((num_electrones, 2))
-velocidades[:, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6  # v = sqrt(2qV/m)
 
-# Cooldown por electrón (para evitar múltiples colisiones seguidas)
+velocidades = np.zeros((num_electrones, 2))
+velocidades[:, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6
+
 cooldown = np.zeros(num_electrones)
 
-# NUMERO Y POSICION DE LOS ATOMOS
 num_atom = 70
 pos_atoms_x = np.linspace(1, 13, num_atom)
-pos_atoms_y = np.random.uniform(0, altura , num_atom)
+pos_atoms_y = np.random.uniform(0, altura, num_atom)
 atoms = np.column_stack((pos_atoms_x, pos_atoms_y))
 
-# Controles de animación
 if "animando" not in st.session_state:
     st.session_state.animando = False
 
-col1, col2 = st.columns(2)
-with col1:
+btn_col1, btn_col2 = st.columns(2)
+with btn_col1:
     if st.button("✅ Comenzar animación"):
         st.session_state.animando = True
-with col2:
+with btn_col2:
     if st.button("🛑 Detener animación"):
         st.session_state.animando = False
 
-# Contenedor gráfico
 grafico = st.empty()
 
+# ---------------- LOOP DE ANIMACIÓN ----------------
+trails = [[] for _ in range(num_electrones)]
+trail_length = 6  # Cantidad de puntos para dejar rastro
+
 while st.session_state.animando:
+    # Actualizar posiciones
     posiciones[:, 0] += velocidades[:, 0] * dt
 
+    # Colisiones
     for i in range(num_electrones):
         if cooldown[i] > 0:
             cooldown[i] -= 1
@@ -187,37 +160,31 @@ while st.session_state.animando:
             dist = np.linalg.norm(posiciones[i] - atom)
             if dist < 0.3:
                 energia_cinetica = 0.5 * 9.1e-31 * (velocidades[i, 0] / 1e-6) ** 2
-                energia_exc_jules = pot_excitacion * 1.6e-19
-                n = int(energia_cinetica // energia_exc_jules)
-
+                energia_exc = pot_excitacion * 1.6e-19
+                n = int(energia_cinetica // energia_exc)
                 if n >= 1:
-                    # Probabilidad simple de colisión inelástica
-                    prob_colision = min(1.0, (energia_cinetica / energia_exc_jules - 1) * 0.2)
-                    if np.random.rand() < prob_colision:
-                        energia_perdida = n * energia_exc_jules
+                    prob = min(1.0, (energia_cinetica / energia_exc - 1) * 0.2)
+                    if np.random.rand() < prob:
+                        energia_perdida = n * energia_exc
                         energia_restante = energia_cinetica - energia_perdida
-                        nueva_velocidad = np.sqrt(2 * energia_restante / 9.1e-31) * 1e-6
-                        velocidades[i, 0] = nueva_velocidad
+                        velocidades[i, 0] = np.sqrt(2 * energia_restante / 9.1e-31) * 1e-6
                         cooldown[i] = 10
-                break  # una sola colisión por frame
+                break
 
-    # Reposicionar electrones que llegan al final
+    # Reposición de los que salen
     reiniciar = posiciones[:, 0] > ancho
     posiciones[reiniciar, 0] = 0
     posiciones[reiniciar, 1] = np.random.uniform(0.5, altura - 0.5, np.sum(reiniciar))
     velocidades[reiniciar, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6
 
-    # Graficar
-    fig, ax = plt.subplots(figsize=(13, 7)) #ANCHO Y ALTO DEL TUBO 
-    tubo = patches.Rectangle((0, 0), ancho, altura, linewidth=1.5, edgecolor='white', facecolor='black')
-    ax.add_patch(tubo)
+    # Actualizar trails
+    for i in range(num_electrones):
+        trails[i].append(posiciones[i].copy())
+        if len(trails[i]) > trail_length:
+            trails[i].pop(0)
 
-#ATOMOS DE HG
-    for atom in atoms:
-        circulo = plt.Circle((atom[0], atom[1]), 0.10, color='orange')
-        ax.add_patch(circulo)
-    
-    ax.scatter(posiciones[:, 0], posiciones[:, 1], color='cyan', label='Electrones')
+    # Graficar
+    fig, ax = plt.subplots(figsize=(13, 7))
     ax.set_xlim(0, ancho)
     ax.set_ylim(0, altura)
     ax.set_facecolor('#111122')
@@ -225,7 +192,16 @@ while st.session_state.animando:
     ax.set_xlabel("Distancia (cm)", color='white')
     ax.set_ylabel("Altura (cm)", color='white')
     ax.tick_params(colors='white')
-    ax.legend(facecolor='#222244', edgecolor='white')
 
+    # Átomos
+    for atom in atoms:
+        ax.add_patch(plt.Circle((atom[0], atom[1]), 0.10, color='orange'))
+
+    # Electrones
+    ax.scatter(posiciones[:, 0], posiciones[:, 1], color='cyan', edgecolor='white', s=50, label='Electrones')
+
+    ax.legend(facecolor='#222244', edgecolor='white')
     grafico.pyplot(fig)
-    time.sleep(0.1)
+    plt.close(fig)
+
+    time.sleep(0.05)
