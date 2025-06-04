@@ -185,8 +185,8 @@ while st.session_state.animando:
     ax.set_facecolor('#111122')
     ax.set_title("Simulación de electrones", color='white')
     ax.tick_params(colors='white')
-    ax.scatter(atoms[:, 0], atoms[:, 1], c='orange', s=20) #label="Átomos"
-    ax.scatter(posiciones[:, 0], posiciones[:, 1], c='cyan', s=10) #, label="Electrones"
+    ax.scatter(atoms[:, 0], atoms[:, 1], c='orange', s=35) #label="Átomos"
+    ax.scatter(posiciones[:, 0], posiciones[:, 1], c='cyan', s=8) #, label="Electrones"
     #ax.legend(facecolor='gray')
     
     canvas.pyplot(fig)
