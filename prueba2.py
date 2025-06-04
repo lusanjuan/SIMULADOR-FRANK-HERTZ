@@ -146,16 +146,18 @@ grafico = st.empty()
 trails = [[] for _ in range(num_electrones)]
 trail_length = 6  # Cantidad de puntos para dejar rastro
 
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(6, 3))
+canvas = st.empty()
+
 while st.session_state.animando:
-    # Actualizar posiciones
     posiciones[:, 0] += velocidades[:, 0] * dt
 
-    # Colisiones
     for i in range(num_electrones):
         if cooldown[i] > 0:
             cooldown[i] -= 1
             continue
-
         for atom in atoms:
             dist = np.linalg.norm(posiciones[i] - atom)
             if dist < 0.3:
@@ -171,37 +173,21 @@ while st.session_state.animando:
                         cooldown[i] = 10
                 break
 
-    # Reposición de los que salen
     reiniciar = posiciones[:, 0] > ancho
     posiciones[reiniciar, 0] = 0
     posiciones[reiniciar, 1] = np.random.uniform(0.5, altura - 0.5, np.sum(reiniciar))
     velocidades[reiniciar, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6
 
-    # Actualizar trails
-    for i in range(num_electrones):
-        trails[i].append(posiciones[i].copy())
-        if len(trails[i]) > trail_length:
-            trails[i].pop(0)
-
-    # Graficar
-    fig, ax = plt.subplots(figsize=(13, 7))
+    # Acá dibujamos con matplotlib sin parpadeo
+    ax.clear()
     ax.set_xlim(0, ancho)
     ax.set_ylim(0, altura)
     ax.set_facecolor('#111122')
-    ax.set_title("Movimiento de electrones en el tubo", color='white')
-    ax.set_xlabel("Distancia (cm)", color='white')
-    ax.set_ylabel("Altura (cm)", color='white')
+    ax.set_title("Simulación de electrones", color='white')
     ax.tick_params(colors='white')
-
-    # Átomos
-    for atom in atoms:
-        ax.add_patch(plt.Circle((atom[0], atom[1]), 0.10, color='orange'))
-
-    # Electrones
-    ax.scatter(posiciones[:, 0], posiciones[:, 1], color='cyan', edgecolor='white', s=50, label='Electrones')
-
-    ax.legend(facecolor='#222244', edgecolor='white')
-    grafico.pyplot(fig)
-    plt.close(fig)
-
-    time.sleep(0.05)
+    ax.scatter(atoms[:, 0], atoms[:, 1], c='orange', s=20) #label="Átomos"
+    ax.scatter(posiciones[:, 0], posiciones[:, 1], c='cyan', s=10) #, label="Electrones"
+    #ax.legend(facecolor='gray')
+    
+    canvas.pyplot(fig)
+    time.sleep(0.03)
