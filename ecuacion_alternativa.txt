@@ -1,0 +1,12 @@
+# CORRIENTE EN FUNCION DEL VOLTAJE Y DEL NUMERO DE ELECTRONES 
+def corriente_simulada(V, e_exc, num_electrones):
+    corriente = []
+    for v in V:
+        base = v ** 1.2
+        residuo = v % e_exc
+        caída = 0.4 if residuo < 0.3 else 1.0
+        corriente.append(base * caída)
+    return np.array(corriente) * num_electrones
+
+
+    
