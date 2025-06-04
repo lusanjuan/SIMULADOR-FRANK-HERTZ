@@ -10,16 +10,47 @@ st.set_page_config(page_title="Simulador Franck-Hertz", layout="centered")
 # FONDO Y ESTILO
 st.markdown("""
     <style>
-        .stApp {
-            background-color: #09120b;
+    
+        .block-container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+            max-width: 80% !important;
         }
+
+        /* Fondo de la app */
+        .stApp {
+            background-color: #1b2d40;
+        }
+
+        /* Título h1 */
         h1 {
-            color: #ffffff;
+            color: #ffffff !important;
             text-align: center;
             font-family: 'Segoe UI', sans-serif;
         }
+
+        /* Color blanco para el texto general */
+        .stApp, h2, h3, label, .css-10trblm, .css-1cpxqw2, .css-qrbaxs, .stMarkdown {
+            color: white !important;
+        }
+
+        /* Estilo personalizado para botones */
+        .stButton > button {
+            background-color: #0a141a;
+            color: white !important;
+            border: 1px solid #444;
+            padding: 0.5em 1em;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .stButton > button:hover {
+            background-color: #444444;
+            color: white !important;
+        }
     </style>
 """, unsafe_allow_html=True)
+
 
 # TITULO
 st.markdown("""
@@ -31,6 +62,46 @@ st.markdown("""
 Este simulador te permite explorar cómo los electrones colisionan con átomos a medida que aumenta el voltaje. 
 Observa los picos de corriente cuando los electrones pierden energía por excitación atómica. 
 """)
+
+
+#ESTILO DE LOS SLIDERS 
+st.markdown("""
+    <style>
+        /* Estilo para los sliders */
+        .stSlider {
+            background-color: #0a141a;
+            padding: 1rem;
+            border: 1px solid #9da9b0;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        /* Texto del label del slider */
+        .stSlider label {
+            color: white !important;
+            font-weight: bold;
+        }
+
+        /* Track del slider (la línea) */
+        .stSlider .css-14rggix {
+            background-color: #1f1f1f !important;
+            border-radius: 5px;
+        }
+
+        /* Thumb del slider (la bolita que se arrastra) */
+        .stSlider .css-1c5cd5h {
+            background-color: #00ffcc !important;
+        }
+
+        /* Valor del slider */
+        .stSlider .css-1cpxqw2 {
+            color: white !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Crea dos columnas: sliders a la izquierda (col1), gráfico a la derecha (col2)
+col1, col2 = st.columns([1, 2])  # [1, 2] = col2 será el doble de ancha
 
 # SLIDERS
 pot_excitacion = st.slider("Potencial de excitación (eV)", 0.1, 20.0, 4.9, 0.1)
@@ -67,7 +138,7 @@ ax.set_title("Corriente vs Voltaje")
 ax.legend()
 st.pyplot(fig)
 
-# ---------- Simulación Visual -----------
+# ------------------------------------Simulación Visual -------------------------
 st.title("Simulación visual del experimento de Franck y Hertz")
 ancho = 10
 altura = 5
