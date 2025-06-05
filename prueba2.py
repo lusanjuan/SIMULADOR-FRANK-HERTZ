@@ -81,7 +81,7 @@ sliders_col, grafico_col = st.columns([1, 2])
 with sliders_col:
     pot_excitacion = st.slider("Potencial de excitación (eV)", 0.1, 20.0, 4.9, 0.1)
     voltaje_max = st.slider("Voltaje de aceleración (V)", 0.0, 50.0, 0.0, 0.1)
-    num_electrones = st.slider("Número de electrones", 5, 100, 20)
+    num_electrones = st.slider("Número de electrones", 50, 200, 150)
 
 def corriente_simulada(V, e_exc, num_electrones, A=1.0, B=0.7, alpha=1.2, phi=0):
     V = np.array(V)
@@ -177,7 +177,7 @@ while st.session_state.animando:
     posiciones[reiniciar, 0] = 0
     posiciones[reiniciar, 1] = np.random.uniform(0.5, altura - 0.5, np.sum(reiniciar))
     velocidades[reiniciar, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6
-
+    
     # Acá dibujamos con matplotlib sin parpadeo
     ax.clear()
     ax.set_xlim(0, ancho)
@@ -191,3 +191,4 @@ while st.session_state.animando:
     
     canvas.pyplot(fig)
     time.sleep(0.03)
+    
