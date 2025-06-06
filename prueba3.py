@@ -92,24 +92,29 @@ with grafico_col:
     ax.legend()
     st.pyplot(fig)
 
-# ---------------- SIMULACIÓN VISUAL ----------------
+# ---------------- SIMULACIÓN VISUAL (con emisión continua) ----------------
 st.markdown("<h2>Simulación visual del experimento</h2>", unsafe_allow_html=True)
 ancho, altura = 10, 5
 dt = 0.1
+amplitud_ondulacion = 0.05
+frecuencia_ondulacion = 4
 
-posiciones = np.zeros((num_electrones, 2))
-posiciones[:, 1] = np.random.uniform(0.5, altura - 0.5, num_electrones)
-velocidades = np.zeros((num_electrones, 2))
-velocidades[:, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6
-cooldown = np.zeros(num_electrones)
+# Inicializar partículas vacías
+posiciones = np.empty((0, 2))
+velocidades = np.empty((0, 2))
+fase_individual = np.empty((0,))
+cooldown = np.array([])
 
-num_atom = 70
+# Posiciones de átomos
+num_atom = 80
 pos_atoms_x = np.linspace(1, 8, num_atom)
 pos_atoms_y = np.random.uniform(0, altura, num_atom)
 atoms = np.column_stack((pos_atoms_x, pos_atoms_y))
 
+# Posiciones clave
 x_catodo, x_filamento, x_anodo, x_frenado = 0.2, 0.3, 8.0, 9.5
 
+# Control de animación
 if "animando" not in st.session_state:
     st.session_state.animando = False
 
@@ -121,13 +126,37 @@ with btn_col2:
     if st.button("🛑 Detener animación"):
         st.session_state.animando = False
 
+# Dibujo inicial
 fig, ax = plt.subplots(figsize=(8, 4))
 canvas = st.empty()
 
-while st.session_state.animando:
-    posiciones[:, 0] += velocidades[:, 0] * dt
+# Cantidad de electrones máxima y emisión progresiva
+max_electrones = num_electrones
+electrones_por_frame = max(3, num_electrones // 80)
 
-    for i in range(num_electrones):
+while st.session_state.animando:
+    # Emitir nuevos electrones
+    if len(posiciones) < max_electrones:
+        nuevos = min(electrones_por_frame, max_electrones - len(posiciones))
+        nuevas_pos = np.zeros((nuevos, 2))
+        nuevas_pos[:, 0] = x_catodo
+        nuevas_pos[:, 1] = np.random.uniform(0.5, altura - 0.5, nuevos)
+        nuevas_vel = np.zeros((nuevos, 2))
+        nuevas_vel[:, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6
+        nuevas_fases = np.random.uniform(0, 2 * np.pi, nuevos)
+        nuevos_cooldown = np.zeros(nuevos)
+
+        posiciones = np.vstack([posiciones, nuevas_pos])
+        velocidades = np.vstack([velocidades, nuevas_vel])
+        fase_individual = np.concatenate([fase_individual, nuevas_fases])
+        cooldown = np.concatenate([cooldown, nuevos_cooldown])
+
+    # Movimiento
+    posiciones[:, 0] += velocidades[:, 0] * dt
+    posiciones[:, 1] += amplitud_ondulacion * np.sin(frecuencia_ondulacion * posiciones[:, 0] + fase_individual)
+
+    # Colisiones
+    for i in range(len(posiciones)):
         if cooldown[i] > 0:
             cooldown[i] -= 1
             continue
@@ -142,29 +171,43 @@ while st.session_state.animando:
                         cooldown[i] = 10
                 break
 
+    # Voltaje de frenado solo afecta después del ánodo
     energia_final = 0.5 * 9.1e-31 * (velocidades[:, 0] / 1e-6)**2
     energia_umbral = voltaje_frenado * 1.6e-19
-    bloqueados = energia_final < energia_umbral
+
+    # Solo aplicar frenado a los que pasaron el ánodo
+    mas_alla_anodo = posiciones[:, 0] >= x_anodo
+    bloqueados = mas_alla_anodo & (energia_final < energia_umbral)
+
+    # Frenar esos electrones
     posiciones[bloqueados, 0] = np.minimum(posiciones[bloqueados, 0], x_frenado)
     velocidades[bloqueados, 0] = 0
 
-    reiniciar = posiciones[:, 0] > ancho
-    posiciones[reiniciar, 0] = 0
-    posiciones[reiniciar, 1] = np.random.uniform(0.5, altura - 0.5, np.sum(reiniciar))
-    velocidades[reiniciar, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6
 
+    # Eliminar electrones fuera del tubo
+    dentro = posiciones[:, 0] <= ancho
+    posiciones = posiciones[dentro]
+    velocidades = velocidades[dentro]
+    fase_individual = fase_individual[dentro]
+    cooldown = cooldown[dentro]
+
+    # Dibujo
     ax.clear()
     ax.set_xlim(0, ancho)
     ax.set_ylim(0, altura)
-    ax.set_facecolor('#111122')
+    ax.set_facecolor('#0e1b28')
     ax.set_title("Simulación de electrones", color='white')
-    ax.tick_params(colors='white')
+    ax.tick_params(colors='white', left=False, bottom=False, labelleft=False, labelbottom=False)
+
+    # Partes del tubo
     ax.add_patch(patches.Rectangle((x_catodo, 0), 0.05, altura, color='gray'))
-    ax.plot([x_filamento]*2, [0.5, altura - 0.5], color='orange', linewidth=2)
+    ax.plot([x_filamento]*2, [0.5, altura - 0.5], color='orange', linewidth=3)
     ax.add_patch(patches.Rectangle((x_anodo, 0), 0.05, altura, color='green'))
     ax.axvspan(x_anodo + 0.1, ancho, color='red', alpha=0.1)
 
-    ax.scatter(atoms[:, 0], atoms[:, 1], c='orange', s=35)
-    ax.scatter(posiciones[:, 0], posiciones[:, 1], c='cyan', s=8)
+    # Dibujar átomos y electrones
+    ax.scatter(atoms[:, 0], atoms[:, 1], c='#ffaa00', s=60, edgecolors='black', linewidths=0.5)
+    ax.scatter(posiciones[:, 0], posiciones[:, 1], c='#00ffff', s=10)
+
     canvas.pyplot(fig)
     time.sleep(0.03)
