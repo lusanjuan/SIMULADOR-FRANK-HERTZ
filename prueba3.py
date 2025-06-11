@@ -131,6 +131,11 @@ fig, ax = plt.subplots(figsize=(8, 4))
 canvas = st.empty()
 dt = 0.07 #paso del tiempo arbitrario, puedes ajustarlo para que la animación vaya más rápida o más lenta.
 
+# Parámetros físicos
+q = 1.6e-19  # Carga del electrón (C)
+m = 9.1e-31  # Masa del electrón (kg)
+
+
 while st.session_state.animando:
     # Emisión continua
     nuevos = flujo_electrones
@@ -139,7 +144,7 @@ while st.session_state.animando:
     nuevas_pos[:, 1] = np.random.uniform(0.5, altura - 0.5, nuevos)
 
     nuevas_vel = np.zeros((nuevos, 2))
-    nuevas_vel[:, 0] = np.sqrt(2 * 1.6e-19 * voltaje_max / 9.1e-31) * 1e-6
+    nuevas_vel[:, 0] = np.sqrt(2 *q* voltaje_max / m) * 1e-6 
     nuevas_fase = np.random.uniform(0, 2*np.pi, nuevos)
     nuevas_cd = np.zeros(nuevos)
 
@@ -169,16 +174,8 @@ while st.session_state.animando:
                 break
 
 
-    # Definir factores de conversión
-    factor_v = 1e-6     # La velocidad simulada = velocidad física (m/s) * factor_v
-
-    # Parámetros físicos
-    q = 1.6e-19  # Carga del electrón (C)
-    m = 9.1e-31  # Masa del electrón (kg)
-
     # Al inicializar la velocidad de los electrones:
-    nuevas_vel[:, 0] = np.sqrt(2 * q * voltaje_max / m) * factor_v
-
+    nuevas_vel[:, 0] = np.sqrt(2 * q * voltaje_max / m) 
 
     # Campo eléctrico uniform entre ánodo y colector:
     dist_frenado = (x_colector_metros - x_anodo_metros)   # distancia en metros
@@ -188,16 +185,16 @@ while st.session_state.animando:
 
         # Convertir la aceleración a unidades de simulación:
         # dt (segundos) se multiplica por la aceleración física; luego se convierte a unidades de simulación con factor_v
-        a_frenado_sim = a_frenado * dt * factor_v
+
 
         # Definir la zona de frenado (entre x_anodo y x_colector en unidades de simulación)
         zona_frenado = (pos[:, 0] >= x_anodo) & (pos[:, 0] <= x_colector_metros)
 
         # Aplicar la desaceleración sobre la velocidad (en unidades de simulación/s)
-        vel[zona_frenado, 0] += a_frenado_sim
+        vel[zona_frenado, 0] += a_frenado
 
         # Calcular la energía cinética: convertir la velocidad simulada a m/s
-        energia = 0.5 * m * (vel[:, 0] / factor_v)**2  # Ahora vel/factor_v es la velocidad física en m/s
+        energia = 0.5 * m * (vel[:, 0] )**2  # Ahora vel/factor_v es la velocidad física en m/s
         umbral = voltaje_frenado * q                    # Umbral en Joules
 
         # Forzar cero velocidad en caso de que, por errores numéricos, se tengan energías negativas
