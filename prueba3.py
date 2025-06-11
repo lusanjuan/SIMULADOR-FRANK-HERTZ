@@ -103,6 +103,8 @@ with grafico:
 st.markdown("## Simulación visual")
 ancho, altura = 10, 5
 x_catodo, x_filamento, x_anodo, x_colector = 0.3, 0.2, 8.0, 10 
+escala=0.08
+x_catodo_metros, x_filamento_metros, x_anodo_metros, x_colector_metros = 0.3*escala, 0.2*escala, 8.0*escala, 10.0*escala
 
 if "animando" not in st.session_state:
     st.session_state.animando = False
@@ -113,7 +115,7 @@ with col1:
         st.session_state.animando = True
 with col2:
     if st.button("⏹️ Detener"):
-        st.session_state.animando = False
+        st.session_state.animando = False 
 
 pos = np.empty((0, 2))        # Posiciones de electrones
 vel = np.empty((0, 2))        # Velocidades de electrones
@@ -125,9 +127,9 @@ atoms_x = np.linspace(1, 8, 80) #80 posiciones uniformemente distribuidas entre 
 atoms_y = np.random.uniform(0.5, altura - 0.5, 80) # 80 posiciones aleatorias verticales entre y = 0.5 y altura - 0.5, para no pegarlos a los bordes.
 atoms = np.column_stack((atoms_x, atoms_y)) # ombina esas dos listas en coordenadas [x, y], una por átomo → tendrás 80 átomos dispersos.
 
-fig, ax = plt.subplots(figsize=(8, 4))
+fig, ax = plt.subplots(figsize=(8, 4)) 
 canvas = st.empty()
-dt = 0.05 #paso del tiempo arbitrario, puedes ajustarlo para que la animación vaya más rápida o más lenta.
+dt = 0.07 #paso del tiempo arbitrario, puedes ajustarlo para que la animación vaya más rápida o más lenta.
 
 while st.session_state.animando:
     # Emisión continua
@@ -168,7 +170,6 @@ while st.session_state.animando:
 
 
     # Definir factores de conversión
-    escala = 0.1        # 1 unidad = 0.1 metros
     factor_v = 1e-6     # La velocidad simulada = velocidad física (m/s) * factor_v
 
     # Parámetros físicos
@@ -178,10 +179,9 @@ while st.session_state.animando:
     # Al inicializar la velocidad de los electrones:
     nuevas_vel[:, 0] = np.sqrt(2 * q * voltaje_max / m) * factor_v
 
-    # … (más adelante, en el loop de simulación) …
 
-    # Campo eléctrico uniformente entre ánodo y colector:
-    dist_frenado = (x_colector - x_anodo) * escala  # distancia en metros
+    # Campo eléctrico uniform entre ánodo y colector:
+    dist_frenado = (x_colector_metros - x_anodo_metros)   # distancia en metros
     if dist_frenado > 0:
         E_frenado = voltaje_frenado / dist_frenado    # V/m
         a_frenado = -q * E_frenado / m                 # aceleración en m/s²
@@ -191,7 +191,7 @@ while st.session_state.animando:
         a_frenado_sim = a_frenado * dt * factor_v
 
         # Definir la zona de frenado (entre x_anodo y x_colector en unidades de simulación)
-        zona_frenado = (pos[:, 0] >= x_anodo) & (pos[:, 0] <= x_colector)
+        zona_frenado = (pos[:, 0] >= x_anodo) & (pos[:, 0] <= x_colector_metros)
 
         # Aplicar la desaceleración sobre la velocidad (en unidades de simulación/s)
         vel[zona_frenado, 0] += a_frenado_sim
@@ -203,7 +203,7 @@ while st.session_state.animando:
         # Forzar cero velocidad en caso de que, por errores numéricos, se tengan energías negativas
         vel[vel[:, 0] < 0, 0] = 0
         detener = zona_frenado & (energia < umbral)
-        vel[detener, 0] = 0
+        #vel[detener, 0] = 0
 
     # Eliminar fuera de rango
     dentro = (pos[:, 0] <= ancho)
