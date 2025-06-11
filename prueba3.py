@@ -221,6 +221,6 @@ while st.session_state.animando:
     ax.add_patch(patches.Rectangle((x_anodo, 0), 0.05, altura, color='green')) # Ánodo
     ax.axvspan(x_anodo + 0.1, ancho, color='red', alpha=0.1) # Zona de frenado
     ax.scatter(atoms[:, 0], atoms[:, 1], c='#ffaa00', s=60, edgecolors='black', linewidths=0.5) 
-    ax.scatter(pos[:, 0], pos[:, 1], c='#00ffff', s=10)
+    ax.scatter(pos[:, 0], pos[:, 1], c='#ff9cbb', edgecolors= 'white', linewidths=0.2, s=10)
     canvas.pyplot(fig)
     time.sleep(0.03)
