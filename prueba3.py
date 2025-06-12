@@ -71,8 +71,8 @@ phi = 4.5  # eV
 k = 8.617e-5  # eV/K
 A = 1.0e6  # valor arbitrario
 J = A * temp_filamento**2 * np.exp(-phi / (k * temp_filamento))
-flujo_electrones = int(J * 1e-7)  # Escalado
-flujo_electrones = max(1, min(flujo_electrones, 100))
+flujo_electrones = int(J*1e-4)  # Escalado 
+flujo_electrones = max(1, flujo_electrones)
 
 # Mostrar
 with sliders:
