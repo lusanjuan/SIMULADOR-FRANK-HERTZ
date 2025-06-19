@@ -11,216 +11,184 @@ st.markdown("""
     <style>
         .block-container { padding-left: 1rem; padding-right: 1rem; max-width: 80% !important; }
         .stApp { background-color: #1b2d40; }
-        h1, h2, h3, label, .stMarkdown, .css-qrbaxs {
-            color: white !important; font-family: 'Segoe UI', sans-serif;
-        }
-        .stButton > button {
-            background-color: #0a141a; color: white !important; border: 1px solid #444;
-            padding: 0.5em 1em; border-radius: 8px; font-weight: bold;
-        }
+        h1, h2, h3, label, .stMarkdown, .css-qrbaxs { color: white !important; font-family: 'Segoe UI', sans-serif; }
+        .stButton > button { background-color: #0a141a; color: white !important; border: 1px solid #444; padding: 0.5em 1em; border-radius: 8px; font-weight: bold; }
         .stButton > button:hover { background-color: #444444; color: white !important; }
-        .stSlider {
-            background-color: #0a141a; padding: 1rem;
-            border: 1px solid #9da9b0; border-radius: 10px; margin-bottom: 1rem;
-        }
+        .stSlider { background-color: #0a141a; padding: 1rem; border: 1px solid #9da9b0; border-radius: 10px; margin-bottom: 1rem; }
         .stSlider label { color: white !important; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
-#------------------------------EXPLICACION TEORICA------------------------------
+# ------------------------------ EXPLICACION TEORICA ------------------------------
 st.markdown("""
 <h1>Experimento de Franck y Hertz</h1>
 <h3>🔬 Fundamento físico</h3>
 
 <p>
 El experimento de Franck y Hertz demuestra que los electrones al colisionar con átomos (como los de mercurio) pueden perder energía en cantidades discretas, evidenciando que los niveles de energía en los átomos están cuantizados.
-
+<br><br>
 Un filamento caliente (cátodo) emite electrones por emisión termoiónica, un proceso explicado por la ley de Richardson-Dushman. A mayor temperatura, más electrones adquieren suficiente energía térmica para escapar del metal.
-
+<br><br>
 Los electrones son acelerados hacia una rejilla (ánodo) mediante un voltaje acelerador. Durante su recorrido, pueden colisionar con átomos de mercurio.
-
-Si la energía cinética de un electrón es igual o superior a la energía de excitación del átomo (por ejemplo, 4.9 eV para Hg), el electrón puede excitar al átomo y pierde esa energía.
-
+<br><br>
+Si la energía cinética de un electrón es igual o superior a la energía de excitación del átomo (por ejemplo, 4.9 eV para Hg), el electrón puede excitar al átomo y pierde esa energía.
+<br><br>
 Después del ánodo, un pequeño voltaje de frenado puede impedir que los electrones lleguen al colector, afectando la corriente detectada.
-
+<br><br>
 Al aumentar el voltaje acelerador, se observan picos y valles en la corriente, lo cual refleja los momentos en los que los electrones pierden energía por colisiones inelásticas con los átomos.
-
 </p>
 
 <p>
 El filamento caliente (cátodo) emite electrones por <strong>emisión termoiónica</strong>, descrita por la ley de Richardson-Dushman:
 </p>
-<p style="text-align: center">
+<p style="text-align:center">
 J = A T² e^(−ϕ / kT)
 </p>
 <p>
-Donde <em>T</em> es la temperatura, <em>ϕ</em> el trabajo de función, y <em>A</em> una constante. A mayor T, mayor flujo de electrones.
+donde <em>T</em> es la temperatura, <em>ϕ</em> el trabajo de función y <em>A</em> una constante. A mayor T, mayor flujo de electrones.
 </p>
 """, unsafe_allow_html=True)
 
-# ------------------------------SLIDERS-------------------------------
+# ------------------------------ SLIDERS ------------------------------
 sliders, grafico = st.columns([1, 2])
 with sliders:
-    pot_excitacion = st.slider("Potencial de excitación (eV)", 0.1, 20.0, 4.9, 0.1)
-    voltaje_max = st.slider("Voltaje de aceleración (V)", 0.0, 50.0, 8.0, 0.1)
-    voltaje_frenado = st.slider("Voltaje de frenado (V)", 0.0, 10.0, 1.0, 0.1)
-    temp_filamento = st.slider("Temperatura del filamento (K)", 1000, 3000, 2000, 100)
+    pot_excitacion  = st.slider("Potencial de excitación (eV)", 0.1, 20.0, 4.9, 0.1)
+    voltaje_max     = st.slider("Voltaje de aceleración (V)",   0.0, 50.0, 8.0, 0.1)
+    voltaje_frenado = st.slider("Voltaje de frenado (V)",       0.0, 10.0, 1.0, 0.1)
+    temp_filamento  = st.slider("Temperatura del filamento (K)", 1000, 3000, 2000, 100)
 
-# ------------------------------CÁLCULO DEL FLUJO DE ELECTRONES-------------------------------
-phi = 4.5  # eV
-k = 8.617e-5  # eV/K
-A = 1.0e6  # valor arbitrario
-J = A * temp_filamento**2 * np.exp(-phi / (k * temp_filamento))
-flujo_electrones = int(J*1e-4)  # Escalado 
-flujo_electrones = max(1, flujo_electrones)
-
-# Mostrar
+# ------------------------------ FLUJO DE ELECTRONES ------------------------------
+phi, kB, A = 4.5, 8.617e-5, 1.0e6
+J = A * temp_filamento**2 * np.exp(-phi / (kB * temp_filamento))
+flujo_electrones = max(1, int(J*1e-4))
 with sliders:
     st.markdown(f"Flujo de electrones: **{flujo_electrones} e⁻/frame**")
 
-# ------------------------------GRÁFICO DE CORRIENTE SIMULADA-------------------------------
-def corriente_simulada(V, e_exc, escala):
+# ------------------------------ GRÁFICO I-V ------------------------------
+def corriente_simulada(V, e_exc, esc):
     V = np.array(V)
-    A, B, alpha = 1.0, 0.7, 1.2
-    corriente = A * V**alpha * (1 - B * np.sin(np.pi * V / e_exc)**2)
-    corriente[V <= 0] = 0
-    return corriente * escala
+    A, B, α = 1.0, 0.7, 1.2
+    I = A*V**α * (1 - B*np.sin(np.pi*V/e_exc)**2)
+    I[V<=0] = 0
+    return I*esc
 
-voltaje = np.linspace(0, 50, 500)
-corriente = corriente_simulada(voltaje, pot_excitacion, flujo_electrones)
-corriente[voltaje > voltaje_max] = np.nan
-
+V_arr = np.linspace(0, 50, 500)
+I_arr = corriente_simulada(V_arr, pot_excitacion, flujo_electrones)
+I_arr[V_arr > voltaje_max] = np.nan
 with grafico:
-    fig, ax = plt.subplots()
-    ax.plot(voltaje, corriente, color="cyan")
-    ax.axvline(voltaje_max, color="red", linestyle="--")
-    ax.set_xlabel("Voltaje (V)")
-    ax.set_ylabel("Corriente (u.a.)")
-    ax.set_title("Corriente vs Voltaje")
-    st.pyplot(fig)
+    fig_IV, ax_IV = plt.subplots()
+    fig_IV.patch.set_facecolor('#0e1b28')
+    ax_IV.plot(V_arr, I_arr, color="cyan")
+    ax_IV.axvline(voltaje_max, color="red", ls="--")
+    ax_IV.tick_params(colors='white')
+    for s in ax_IV.spines.values(): s.set_color('white')
+    ax_IV.set_xlabel("Voltaje (V)", color='white')
+    ax_IV.set_ylabel("Corriente (u.a.)", color='white')
+    ax_IV.set_title("Corriente vs Voltaje", color='white')
+    st.pyplot(fig_IV)
 
-#  ------------------------------SIMULACIÓN VISUAL-------------------------------
+# ------------------------------ SIMULACIÓN VISUAL ------------------------------
 st.markdown("## Simulación visual")
 ancho, altura = 10, 5
-x_catodo, x_filamento, x_anodo, x_colector = 0.3, 0.2, 8.0, 10 
-escala=0.08
-x_catodo_metros, x_filamento_metros, x_anodo_metros, x_colector_metros = 0.3*escala, 0.2*escala, 8.0*escala, 10.0*escala
+x_catodo, x_filamento, x_anodo, x_colector = 0.3, 0.2, 8.0, 10
+escala = 0.08
+FACTOR_V = 1e-6
+x_catodo_m, x_filamento_m, x_anodo_m, x_colector_m = \
+    np.array([x_catodo, x_filamento, x_anodo, x_colector]) * escala
 
-if "animando" not in st.session_state:
-    st.session_state.animando = False
-
+if "animando" not in st.session_state: st.session_state.animando = False
 col1, col2 = st.columns(2)
 with col1:
-    if st.button("▶️ Comenzar"):
-        st.session_state.animando = True
+    if st.button("▶️ Comenzar"): st.session_state.animando = True
 with col2:
-    if st.button("⏹️ Detener"):
-        st.session_state.animando = False 
+    if st.button("⏹️ Detener"): st.session_state.animando = False
 
-pos = np.empty((0, 2))        # Posiciones de electrones
-vel = np.empty((0, 2))        # Velocidades de electrones
-fase = np.empty((0,))         # Fase ondulatoria de cada electrón (para que no se muevan todos igual en y)
-cooldown = np.empty((0,))     # Tiempo de espera tras colisión para evitar múltiples colisiones seguidas
+pos, vel = np.empty((0,2)), np.empty((0,2))
+fase, cooldown = np.empty((0,)), np.empty((0,))
+atoms_x = np.linspace(1, 8, 80)
+atoms_y = np.random.uniform(0.5, altura-0.5, 80)
+atoms = np.column_stack((atoms_x, atoms_y))
 
+# ----- NIVELES Hg: 0 eV, 4.9 eV, 6.7 eV -----
+ENERG_N = [0.0, 4.9, 6.7]      # eV absolutos
+T_RELAX = [  0,   60, 120]     # frames
+COL_N   = ['#ffaa00', '#ff4444', '#d48bff']
+nivel_atom = np.zeros(len(atoms), int)
+relax_t    = np.zeros(len(atoms), int)
 
-atoms_x = np.linspace(1, 8, 80) #80 posiciones uniformemente distribuidas entre x = 1 y x = 8 (dentro del tubo).
-atoms_y = np.random.uniform(0.5, altura - 0.5, 80) # 80 posiciones aleatorias verticales entre y = 0.5 y altura - 0.5, para no pegarlos a los bordes.
-atoms = np.column_stack((atoms_x, atoms_y)) # ombina esas dos listas en coordenadas [x, y], una por átomo → tendrás 80 átomos dispersos.
-
-fig, ax = plt.subplots(figsize=(8, 4)) 
+fig, ax = plt.subplots(figsize=(8,4))
+fig.patch.set_facecolor('#0e1b28')
 canvas = st.empty()
-dt = 0.07 #paso del tiempo arbitrario, puedes ajustarlo para que la animación vaya más rápida o más lenta.
-
-# Parámetros físicos
-q = 1.6e-19  # Carga del electrón (C)
-m = 9.1e-31  # Masa del electrón (kg)
-
+dt, q, m = 0.07, 1.6e-19, 9.1e-31
+RCOL, P_INEL = 0.22, 0.12
 
 while st.session_state.animando:
-    # Emisión continua
-    nuevos = flujo_electrones
-    nuevas_pos = np.zeros((nuevos, 2))
-    nuevas_pos[:, 0] = x_filamento
-    nuevas_pos[:, 1] = np.random.uniform(0.5, altura - 0.5, nuevos)
+    # Emisión
+    n = flujo_electrones
+    pos = np.vstack([pos,
+        np.column_stack([np.full(n, x_filamento),
+                         np.random.uniform(0.5, altura-0.5, n)])])
+    v0 = np.sqrt(2*q*voltaje_max/m)*FACTOR_V
+    vel = np.vstack([vel, np.column_stack([np.full(n, v0), np.zeros(n)])])
+    fase = np.concatenate([fase, np.random.uniform(0, 2*np.pi, n)])
+    cooldown = np.concatenate([cooldown, np.zeros(n)])
 
-    nuevas_vel = np.zeros((nuevos, 2))
-    nuevas_vel[:, 0] = np.sqrt(2 *q* voltaje_max / m) * 1e-6 
-    nuevas_fase = np.random.uniform(0, 2*np.pi, nuevos)
-    nuevas_cd = np.zeros(nuevos)
+    # Movimiento base
+    pos[:,0] += vel[:,0]*dt
+    pos[:,1] += 0.05*np.sin(4*pos[:,0]+fase)
 
-    pos = np.vstack([pos, nuevas_pos])
-    vel = np.vstack([vel, nuevas_vel])
-    fase = np.concatenate([fase, nuevas_fase])
-    cooldown = np.concatenate([cooldown, nuevas_cd])
-
-    # Movimiento
-    pos[:, 0] += vel[:, 0] * dt
-    pos[:, 1] += 0.05 * np.sin(4 * pos[:, 0] + fase)
-
-    # ------------------ Colisiones con átomos -----------------
-    for i in range(len(pos)): # iterar sobre cada electrón
-        if cooldown[i] > 0: # Si está en cooldown, no colisiona
-            cooldown[i] -= 1
-            continue
-        for atom in atoms: # iterar sobre cada átomo
-            if np.linalg.norm(pos[i] - atom) < 0.3: # si la distancia al átomo es menor a 0.3
-                ec = 0.5 * 9.1e-31 * (vel[i, 0] / 1e-6)**2 # Energía cinética del electrón
-                ee = pot_excitacion * 1.6e-19 # Energía de excitación del átomo
-                if ec >= ee: # Si la energía cinética es suficiente para excitar el átomo
-                    prob = min(1.0, (ec / ee - 1) * 0.2) # Probabilidad de excitación 
-                    if np.random.rand() < prob:     # Si se excita el átomo
-                        vel[i, 0] = np.sqrt(2 * (ec - ee) / 9.1e-31) * 1e-6 # Actualiza la velocidad del electrón
+    # Colisiones (energía incremental)
+    for i in range(len(pos)):
+        if cooldown[i]>0: cooldown[i]-=1; continue
+        for j, at in enumerate(atoms):
+            if np.linalg.norm(pos[i]-at) < RCOL:
+                Ec = 0.5*m*(vel[i,0]/FACTOR_V)**2
+                lvl = nivel_atom[j]
+                if lvl < 2:
+                    deltaE = (ENERG_N[lvl+1] - ENERG_N[lvl]) * q
+                    if Ec >= deltaE and np.random.rand() < P_INEL:
+                        vel[i,0] = np.sqrt(max(0, 2*(Ec-deltaE)/m))*FACTOR_V
+                        nivel_atom[j] += 1
+                        relax_t[j] = T_RELAX[nivel_atom[j]]
                         cooldown[i] = 10
                 break
 
+    # Relajación de átomos
+    relax_t = np.maximum(relax_t-1, 0)
+    for j in np.where(relax_t==0)[0]:
+        if nivel_atom[j]>0:
+            nivel_atom[j]-=1; relax_t[j]=T_RELAX[nivel_atom[j]]
 
-    # Al inicializar la velocidad de los electrones:
-    nuevas_vel[:, 0] = np.sqrt(2 * q * voltaje_max / m) 
+    # Zona de frenado (sin retroceso)
+    dist_m = (x_colector_m - x_anodo_m)
+    if dist_m>0:
+        dv = (-q*voltaje_frenado/m) / dist_m * FACTOR_V**2 * dt
+        zona = (pos[:,0]>=x_anodo)&(pos[:,0]<=x_colector)
+        rev = zona & (vel[:,0]+dv <= 0)
+        vel[rev,0]=0; vel[zona & ~rev,0] += dv
 
-    # Campo eléctrico uniform entre ánodo y colector:
-    dist_frenado = (x_colector_metros - x_anodo_metros)   # distancia en metros
-    if dist_frenado > 0:
-        E_frenado = voltaje_frenado / dist_frenado    # V/m
-        a_frenado = -q * E_frenado / m                 # aceleración en m/s²
+    # Limpiar fuera de la pantalla
+    keep = pos[:,0]<=ancho
+    pos, vel, fase, cooldown = pos[keep], vel[keep], fase[keep], cooldown[keep]
 
-        # Convertir la aceleración a unidades de simulación:
-        # dt (segundos) se multiplica por la aceleración física; luego se convierte a unidades de simulación con factor_v
-
-
-        # Definir la zona de frenado (entre x_anodo y x_colector en unidades de simulación)
-        zona_frenado = (pos[:, 0] >= x_anodo) & (pos[:, 0] <= x_colector_metros)
-
-        # Aplicar la desaceleración sobre la velocidad (en unidades de simulación/s)
-        vel[zona_frenado, 0] += a_frenado
-
-        # Calcular la energía cinética: convertir la velocidad simulada a m/s
-        energia = 0.5 * m * (vel[:, 0] )**2  # Ahora vel/factor_v es la velocidad física en m/s
-        umbral = voltaje_frenado * q                    # Umbral en Joules
-
-        # Forzar cero velocidad en caso de que, por errores numéricos, se tengan energías negativas
-        vel[vel[:, 0] < 0, 0] = 0
-        detener = zona_frenado & (energia < umbral)
-        #vel[detener, 0] = 0
-
-    # Eliminar fuera de rango
-    dentro = (pos[:, 0] <= ancho)
-    pos = pos[dentro]
-    vel = vel[dentro]
-    fase = fase[dentro]
-    cooldown = cooldown[dentro]
-
-    # -----------------------------DIBUJO-----------------------------
+    # Dibujo
     ax.clear()
-    ax.set_xlim(0, ancho)
-    ax.set_ylim(0, altura)
-    ax.set_facecolor('#0e1b28')
-    ax.tick_params(colors='white', left=False, bottom=False, labelleft=False, labelbottom=False) # Ocultar ejes
-    ax.set_title("Simulación de electrones", color='white') 
-    ax.add_patch(patches.Rectangle((x_catodo, 0), 0.05, altura, color='gray')) # Cátodo
-    ax.plot([x_filamento]*2, [0.8, altura - 0.8], color='orange', linewidth=3) # Filamento
-    ax.add_patch(patches.Rectangle((x_anodo, 0), 0.05, altura, color='green')) # Ánodo
-    ax.axvspan(x_anodo + 0.1, ancho, color='red', alpha=0.1) # Zona de frenado
-    ax.scatter(atoms[:, 0], atoms[:, 1], c='#ffaa00', s=60, edgecolors='black', linewidths=0.5) 
-    ax.scatter(pos[:, 0], pos[:, 1], c='#ff9cbb', edgecolors= 'white', linewidths=0.2, s=10)
-    canvas.pyplot(fig)
-    time.sleep(0.03)
+    ax.set_xlim(0, ancho); ax.set_ylim(0, altura)
+    ax.set_facecolor('#0e1b28'); ax.axis('off')
+    ax.add_patch(patches.Rectangle((x_catodo,0),0.05,altura,color='gray'))
+    ax.plot([x_filamento]*2,[0.8,altura-0.8], color='orange', lw=3)
+    ax.add_patch(patches.Rectangle((x_anodo,0),0.05,altura,color='green'))
+    ax.axvspan(x_anodo+0.1, ancho, color='red', alpha=0.15)
+    ax.scatter(atoms[:,0], atoms[:,1],
+               c=[COL_N[k] for k in nivel_atom], s=60,
+               edgecolors='black', linewidths=0.5)
+    ax.scatter(pos[:,0], pos[:,1],
+               c='#ff9cbb', s=10, edgecolors='white', linewidths=0.2)
+    canvas.pyplot(fig); time.sleep(0.03)
+
+
+# ---------------- LEYENDA ----------------
+st.markdown("""
+**Átomos:** 🟠 fundamental · 🔴 1ª excitación · 🟣 2ª excitación  
+**Electrones:** puntos rosa claro
+""")
