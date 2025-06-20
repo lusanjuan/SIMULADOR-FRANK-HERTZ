@@ -153,108 +153,99 @@ PH_SPEED = 0.6     # desplazamiento vertical
 PH_SIZE  = 6       # tamaño base
 
 while st.session_state.animando:
-    # --- Emisión ---
-    n=flujo_electrones
-    pos=np.vstack([pos,
-        np.column_stack([np.full(n,x_filamento),
-                         np.random.uniform(0.5,altura-0.5,n)])])
-    v0=np.sqrt(2*q*voltaje_max/m)*FACTOR_V
-    vel=np.vstack([vel,np.column_stack([np.full(n,v0),np.zeros(n)])])
-    fase=np.concatenate([fase,np.random.uniform(0,2*np.pi,n)])
-    cooldown=np.concatenate([cooldown,np.zeros(n)])
+    n = flujo_electrones
+    pos = np.vstack([pos, np.column_stack([
+        np.full(n, x_filamento),
+        np.random.uniform(0.5, altura - 0.5, n)])])
+    v0 = np.sqrt(2 * q * voltaje_max / m) * FACTOR_V
+    vel = np.vstack([vel, np.column_stack([
+        np.full(n, v0), np.zeros(n)])])
+    fase = np.concatenate([fase, np.random.uniform(0, 2 * np.pi, n)])
+    cooldown = np.concatenate([cooldown, np.zeros(n)])
 
-    # --- Movimiento ---
-    pos[:,0]+=vel[:,0]*dt
-    pos[:,1]+=0.04*np.sin(4*pos[:,0]+fase)
+    pos[:, 0] += vel[:, 0] * dt
+    pos[:, 1] += 0.04 * np.sin(4 * pos[:, 0] + fase)
 
-    # --- Colisiones ---
     for i in range(len(pos)):
-        if cooldown[i]>0: cooldown[i]-=1; continue
-        for j,at in enumerate(atoms):
-            if np.linalg.norm(pos[i]-at)<RCOL:
-                Ec=0.5*m*(vel[i,0]/FACTOR_V)**2
-                lvl=nivel_atom[j]
-                if lvl<2:
-                    dE=(ENERG_N[lvl+1]-ENERG_N[lvl])*q
-                    # --- Probabilidad dependiente del exceso de energía ---
-                    p_eff = P_INEL * (1 - dE / Ec)   # lineal; 0 ≤ p_eff ≤ P_INEL
+        if cooldown[i] > 0:
+            cooldown[i] -= 1
+            continue
+        for j, at in enumerate(atoms):
+            if np.linalg.norm(pos[i] - at) < RCOL:
+                Ec = 0.5 * m * (vel[i, 0] / FACTOR_V)**2
+                lvl = nivel_atom[j]
+                if lvl < 2:
+                    dE = (ENERG_N[lvl + 1] - ENERG_N[lvl]) * q
+                    p_eff = P_INEL * (1 - dE / Ec)
                     p_eff = max(0, min(p_eff, 1))
-                    if Ec>=dE and np.random.rand()<p_eff:
-                        vel[i,0]=np.sqrt(max(0,2*(Ec-dE)/m))*FACTOR_V
-                        nivel_atom[j]+=1; relax_t[j]=T_RELAX[nivel_atom[j]]; cooldown[i]=10
-                        
+                    if Ec >= dE and np.random.rand() < p_eff:
+                        vel[i, 0] = np.sqrt(max(0, 2 * (Ec - dE) / m)) * FACTOR_V
+                        nivel_atom[j] += 1
+                        relax_t[j] = T_RELAX[nivel_atom[j]]
+                        cooldown[i] = 10
                 break
 
-    # --- Relajación ---
-    relax_t = np.maximum(relax_t-1, 0)
+    relax_t = np.maximum(relax_t - 1, 0)
     for j in np.where(relax_t == 0)[0]:
         if nivel_atom[j] > 0:
-            # → emitir fotón al desexcitar
-            phot_pos  = np.vstack([phot_pos, atoms[j]])
+            phot_pos = np.vstack([phot_pos, atoms[j]])
             phot_life = np.append(phot_life, PH_SPAN)
             nivel_atom[j] -= 1
-            relax_t[j]     = T_RELAX[nivel_atom[j]]
+            relax_t[j] = T_RELAX[nivel_atom[j]]
 
+    dist_m = (x_colector_m - x_anodo_m)
+    if dist_m > 0:
+        dv = (-q * voltaje_frenado / m) / dist_m * FACTOR_V**2 * dt * 0.5
+        zona = (pos[:, 0] >= x_anodo) & (pos[:, 0] <= x_colector)
+        vel[zona, 0] += dv
 
-    # --- Frenado ---
-    dist_m=(x_colector_m-x_anodo_m)
-    if dist_m>0:
-        dv=(-q*voltaje_frenado/m)/dist_m*FACTOR_V**2*dt*0.5
-        zona=(pos[:,0]>=x_anodo)&(pos[:,0]<=x_colector)
-        vel[zona,0]+=dv                       # ya no se fijan a 0
-
-    # --- Fotones ---
     if phot_pos.size:
-        phot_pos[:,1] += PH_SPEED
-        phot_life     -= 1
+        phot_pos[:, 1] += PH_SPEED
+        phot_life -= 1
         keep = phot_life > 0
         phot_pos, phot_life = phot_pos[keep], phot_life[keep]
-        # --- Limpiar fuera de pantalla ---
-        keep=(pos[:,0]>=0)&(pos[:,0]<=ancho)
-        pos,vel,fase,cooldown=pos[keep],vel[keep],fase[keep],cooldown[keep]
-    
 
-    # --- Dibujar ---
-    ax.clear();ax.set_xlim(0,ancho);ax.set_ylim(0,altura)
-    ax.set_facecolor('#0d1c2c');ax.axis('off')
-    ax.add_patch(patches.Rectangle((x_catodo,0),0.05,altura,color='#b0b0b0'))
-    # filamento espiral
-    t=np.linspace(0,1,400);ysp=0.8+(altura-1.6)*t
-    xsp=x_filamento+0.15*np.sin(2*np.pi*15*t)
-    ax.plot(xsp,ysp,color='#ffa64d',lw=2,solid_capstyle='round')
-    # ánodo punteado (una sola línea vertical)
-    ax.plot([x_anodo+0.025, x_anodo+0.025],   # posición x (centrado en la ranura)
-        [0, altura],                      # de y=0 a y=altura
-        color='#2ecc71', linewidth=2, linestyle=':')
+    keep = (pos[:, 0] >= 0) & (pos[:, 0] <= ancho)
+    pos, vel, fase, cooldown = pos[keep], vel[keep], fase[keep], cooldown[keep]
 
-    ax.axvspan(x_anodo+0.1,ancho,color='#ff4757',alpha=0.18)
-    ax.scatter(atoms[:,0],atoms[:,1],
-               c=[COL_N[k] for k in nivel_atom],s=70,edgecolors='white',lw=0.4,alpha=0.95)
-    ax.scatter(pos[:,0],pos[:,1],c='#ff9cbb',s=8,edgecolors='none')
+    ax.clear()
+    ax.set_xlim(0, ancho)
+    ax.set_ylim(0, altura)
+    ax.set_facecolor('#0d1c2c')
+    ax.axis('off')
+
+    ax.add_patch(patches.Rectangle((x_catodo, 0), 0.05, altura, color='#b0b0b0'))
+    t = np.linspace(0, 1, 200)
+    ysp = 0.8 + (altura - 1.6) * t
+    xsp = x_filamento + 0.15 * np.sin(2 * np.pi * 15 * t)
+    ax.plot(xsp, ysp, color='#ffa64d', lw=2, solid_capstyle='round')
+    ax.plot([x_anodo + 0.025, x_anodo + 0.025], [0, altura],
+            color='#2ecc71', linewidth=2, linestyle=':')
+    ax.axvspan(x_anodo + 0.1, ancho, color='#ff4757', alpha=0.18)
+
+    ax.scatter(atoms[:, 0], atoms[:, 1],
+               c=[COL_N[k] for k in nivel_atom],
+               s=60, edgecolors='white', lw=0.3, alpha=0.9)
+    ax.scatter(pos[:, 0], pos[:, 1], c='#ff9cbb', s=6, edgecolors='none')
     if phot_pos.size:
-        alpha  = phot_life / PH_SPAN               # de 1 → 0
-        sizes  = PH_SIZE * (0.8 + alpha)           # grande al nacer, luego ↓
-        ax.scatter(phot_pos[:,0], phot_pos[:,1],
-                c='#ffffff', s=sizes,
-                alpha=alpha, edgecolors='none')
-        for i in range(len(phot_pos)):
-            x, y = phot_pos[i]
-            alpha_trail = phot_life[i] / PH_SPAN
-            for j in range(1, 5):
-                    ax.plot([x, x], [y - j*0.2, y - (j+1)*0.2],
-                    color=(1, 1, 1, alpha_trail * (0.2 - 0.04*j)), linewidth=1)
+        alpha = phot_life / PH_SPAN
+        sizes = PH_SIZE * (0.8 + alpha)
+        ax.scatter(phot_pos[:, 0], phot_pos[:, 1],
+                   c='#ffffff', s=sizes,
+                   alpha=alpha, edgecolors='none')
 
-    canvas.pyplot(fig);time.sleep(0.07)
+    canvas.pyplot(fig)
+    time.sleep(0.05)
 
-    # --- guardar estado antes de recarga ---
-    st.session_state.pos       = pos
-    st.session_state.vel       = vel
-    st.session_state.fase      = fase
-    st.session_state.cooldown  = cooldown
-    st.session_state.nivel_atom= nivel_atom
-    st.session_state.relax_t   = relax_t
-    st.session_state.phot_pos  = phot_pos
+    st.session_state.pos = pos
+    st.session_state.vel = vel
+    st.session_state.fase = fase
+    st.session_state.cooldown = cooldown
+    st.session_state.nivel_atom = nivel_atom
+    st.session_state.relax_t = relax_t
+    st.session_state.phot_pos = phot_pos
     st.session_state.phot_life = phot_life
+
 
 # ---------- LEYENDA ----------
 st.markdown("""
