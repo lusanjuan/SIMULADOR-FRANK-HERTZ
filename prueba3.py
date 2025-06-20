@@ -136,6 +136,10 @@ PH_SPAN  = 15      # vida en frames
 PH_SPEED = 0.6     # desplazamiento vertical
 PH_SIZE  = 6       # tamaño base
 
+# Tamaños intermedios para átomos y electrones
+ATOM_SIZE = 120  # antes 70
+ELECTRON_SIZE = 18  # antes 8
+
 while st.session_state.animando:
     # --- Emisión ---
     n=flujo_electrones
@@ -210,11 +214,10 @@ while st.session_state.animando:
     ax.plot([x_anodo+0.025, x_anodo+0.025],   # posición x (centrado en la ranura)
         [0, altura],                      # de y=0 a y=altura
         color='#2ecc71', linewidth=2, linestyle=':')
-
     ax.axvspan(x_anodo+0.1,ancho,color='#ff4757',alpha=0.18)
     ax.scatter(atoms[:,0],atoms[:,1],
-               c=[COL_N[k] for k in nivel_atom],s=70,edgecolors='white',lw=0.4,alpha=0.95)
-    ax.scatter(pos[:,0],pos[:,1],c='#ff9cbb',s=8,edgecolors='none')
+               c=[COL_N[k] for k in nivel_atom],s=ATOM_SIZE,edgecolors='white',lw=0.4,alpha=0.95)
+    ax.scatter(pos[:,0],pos[:,1],c='#ff9cbb',s=ELECTRON_SIZE,edgecolors='none')
     if phot_pos.size:
         alpha  = phot_life / PH_SPAN               # de 1 → 0
         sizes  = PH_SIZE * (0.8 + alpha)           # grande al nacer, luego ↓
@@ -228,7 +231,12 @@ while st.session_state.animando:
                     ax.plot([x, x], [y - j*0.2, y - (j+1)*0.2],
                     color=(1, 1, 1, alpha_trail * (0.2 - 0.04*j)), linewidth=1)
 
-    canvas.pyplot(fig);time.sleep(0.3)
+    # --- Renderiza la figura a un buffer PNG y muestra con st.image (más rápido que st.pyplot) ---
+    import io
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches=None, dpi=120, pad_inches=0)
+    buf.seek(0)
+    canvas.image(buf, use_container_width=True)
 
     # --- guardar estado antes de recarga ---
     st.session_state.pos       = pos
