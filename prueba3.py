@@ -96,8 +96,10 @@ escala=0.08;FACTOR_V=1e-6
 x_catodo_m,x_filamento_m,x_anodo_m,x_colector_m=np.array([x_catodo,x_filamento,x_anodo,x_colector])*escala
 
 # ---------- ÁTOMOS (fijos) ----------
-atoms=np.column_stack([np.linspace(1,8,80),
-                       np.random.uniform(0.5,altura-0.5,80)])
+atoms = np.column_stack([
+    np.linspace(1,8,40),
+    np.random.uniform(0.5,altura-0.5,40)
+])
 ENERG_N=[0.0,4.9,6.7];T_RELAX=[0,20,40];COL_N=['#ffaa00','#ff4444','#bb88ff']
 
 # ---------- ESTADO PERSISTENTE ----------
@@ -110,6 +112,11 @@ if "pos" not in st.session_state:
     st.session_state.relax_t   = np.zeros(len(atoms),int)
     st.session_state.phot_pos  = np.empty((0,2))
     st.session_state.phot_life = np.empty((0,))
+else:
+    # Si cambia el número de átomos, ajusta nivel_atom y relax_t
+    if len(st.session_state.nivel_atom) != len(atoms):
+        st.session_state.nivel_atom = np.zeros(len(atoms), int)
+        st.session_state.relax_t = np.zeros(len(atoms), int)
 
 pos       = st.session_state.pos
 vel       = st.session_state.vel
@@ -135,6 +142,18 @@ RCOL,P_INEL=0.15,0.15
 PH_SPAN  = 15      # vida en frames
 PH_SPEED = 0.6     # desplazamiento vertical
 PH_SIZE  = 6       # tamaño base
+
+# ---------- OPTIMIZACIÓN DE ANIMACIÓN ----------
+# Reduce el número de electrones y átomos para mayor velocidad
+flujo_electrones = max(1, int(J*1e-5))  # antes era 1e-4
+atoms = np.column_stack([
+    np.linspace(1,8,40),
+    np.random.uniform(0.5,altura-0.5,40)
+])
+
+# Solo dibuja cada N frames
+DRAW_EVERY = 2
+frame = 0
 
 while st.session_state.animando:
     # --- Emisión ---
@@ -166,7 +185,6 @@ while st.session_state.animando:
                     if Ec>=dE and np.random.rand()<p_eff:
                         vel[i,0]=np.sqrt(max(0,2*(Ec-dE)/m))*FACTOR_V
                         nivel_atom[j]+=1; relax_t[j]=T_RELAX[nivel_atom[j]]; cooldown[i]=10
-                        
                 break
 
     # --- Relajación ---
@@ -179,13 +197,12 @@ while st.session_state.animando:
             nivel_atom[j] -= 1
             relax_t[j]     = T_RELAX[nivel_atom[j]]
 
-
     # --- Frenado ---
     dist_m=(x_colector_m-x_anodo_m)
     if dist_m>0:
         dv=(-q*voltaje_frenado/m)/dist_m*FACTOR_V**2*dt*0.5
         zona=(pos[:,0]>=x_anodo)&(pos[:,0]<=x_colector)
-        vel[zona,0]+=dv                       # ya no se fijan a 0
+        vel[zona,0]+=dv
 
     # --- Fotones ---
     if phot_pos.size:
@@ -196,7 +213,10 @@ while st.session_state.animando:
         # --- Limpiar fuera de pantalla ---
         keep=(pos[:,0]>=0)&(pos[:,0]<=ancho)
         pos,vel,fase,cooldown=pos[keep],vel[keep],fase[keep],cooldown[keep]
-    
+
+    frame += 1
+    if frame % DRAW_EVERY != 0:
+        continue  # Salta el dibujo este frame
 
     # --- Dibujar ---
     ax.clear();ax.set_xlim(0,ancho);ax.set_ylim(0,altura)
@@ -210,7 +230,6 @@ while st.session_state.animando:
     ax.plot([x_anodo+0.025, x_anodo+0.025],   # posición x (centrado en la ranura)
         [0, altura],                      # de y=0 a y=altura
         color='#2ecc71', linewidth=2, linestyle=':')
-
     ax.axvspan(x_anodo+0.1,ancho,color='#ff4757',alpha=0.18)
     ax.scatter(atoms[:,0],atoms[:,1],
                c=[COL_N[k] for k in nivel_atom],s=70,edgecolors='white',lw=0.4,alpha=0.95)
@@ -228,7 +247,8 @@ while st.session_state.animando:
                     ax.plot([x, x], [y - j*0.2, y - (j+1)*0.2],
                     color=(1, 1, 1, alpha_trail * (0.2 - 0.04*j)), linewidth=1)
 
-    canvas.pyplot(fig);time.sleep(0.2)
+    canvas.pyplot(fig)  # Elimina o reduce el sleep para máxima velocidad
+    # time.sleep(0.2)
 
     # --- guardar estado antes de recarga ---
     st.session_state.pos       = pos
