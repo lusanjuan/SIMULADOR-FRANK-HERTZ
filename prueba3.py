@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import time
+import plotly.graph_objects as go
 
 st.set_page_config(page_title="Simulador Franck-Hertz", layout="centered")
 
@@ -143,8 +144,11 @@ if col1.button("▶️ Comenzar"): st.session_state.animando=True
 if col2.button("⏹️ Detener"):  st.session_state.animando=False
 
 # ---------- FIGURA ----------
-fig,ax=plt.subplots(figsize=(8,4));fig.patch.set_facecolor('#0d1c2c')
-canvas=st.empty()
+# fig,ax=plt.subplots(figsize=(8,4));fig.patch.set_facecolor('#0d1c2c')
+# canvas=st.empty()
+import plotly.graph_objects as go
+canvas = st.empty()
+
 dt,q,m=0.07,1.6e-19,9.1e-31
 RCOL,P_INEL=0.15,0.15
 # ------------- PARÁMETROS -------------
@@ -204,37 +208,67 @@ while st.session_state.animando:
         phot_life -= 1
         keep = phot_life > 0
         phot_pos, phot_life = phot_pos[keep], phot_life[keep]
+    else:
+        # Para evitar que cambie el número de trazas, siempre hay un array vacío
+        phot_pos = np.empty((0,2))
+        phot_life = np.empty((0,))
 
     keep = (pos[:, 0] >= 0) & (pos[:, 0] <= ancho)
     pos, vel, fase, cooldown = pos[keep], vel[keep], fase[keep], cooldown[keep]
 
-    ax.clear()
-    ax.set_xlim(0, ancho)
-    ax.set_ylim(0, altura)
-    ax.set_facecolor('#0d1c2c')
-    ax.axis('off')
-
-    ax.add_patch(patches.Rectangle((x_catodo, 0), 0.05, altura, color='#b0b0b0'))
+    # --- PLOTLY ANIMATION ESTABLE ---
+    fig = go.Figure()
+    # Fondo y ejes fijos
+    fig.update_layout(
+        width=800, height=320,
+        autosize=False,
+        plot_bgcolor='#0d1c2c',
+        paper_bgcolor='#0d1c2c',
+        xaxis=dict(range=[0, ancho], showgrid=False, zeroline=False, showticklabels=False, fixedrange=True),
+        yaxis=dict(range=[0, altura], showgrid=False, zeroline=False, showticklabels=False, fixedrange=True),
+        margin=dict(l=0, r=0, t=0, b=0),
+    )
+    # Shapes FIJOS (no cambian entre frames)
+    fig.add_shape(type="rect", x0=x_catodo, y0=0, x1=x_catodo+0.05, y1=altura, fillcolor="#b0b0b0", line=dict(width=0), layer="below")
     t = np.linspace(0, 1, 200)
     ysp = 0.8 + (altura - 1.6) * t
     xsp = x_filamento + 0.15 * np.sin(2 * np.pi * 15 * t)
-    ax.plot(xsp, ysp, color='#ffa64d', lw=2, solid_capstyle='round')
-    ax.plot([x_anodo + 0.025, x_anodo + 0.025], [0, altura],
-            color='#2ecc71', linewidth=2, linestyle=':')
-    ax.axvspan(x_anodo + 0.1, ancho, color='#ff4757', alpha=0.18)
-
-    ax.scatter(atoms[:, 0], atoms[:, 1],
-               c=[COL_N[k] for k in nivel_atom],
-               s=60, edgecolors='white', lw=0.3, alpha=0.9)
-    ax.scatter(pos[:, 0], pos[:, 1], c='#ff9cbb', s=6, edgecolors='none')
-    if phot_pos.size:
-        alpha = phot_life / PH_SPAN
-        sizes = PH_SIZE * (0.8 + alpha)
-        ax.scatter(phot_pos[:, 0], phot_pos[:, 1],
-                   c='#ffffff', s=sizes,
-                   alpha=alpha, edgecolors='none')
-
-    canvas.pyplot(fig)
+    fig.add_trace(go.Scatter(x=xsp, y=ysp, mode="lines", line=dict(color="#ffa64d", width=4), showlegend=False, hoverinfo='skip'))
+    fig.add_shape(type="line", x0=x_anodo+0.025, y0=0, x1=x_anodo+0.025, y1=altura, line=dict(color="#2ecc71", width=4, dash="dot"), layer="below")
+    fig.add_shape(type="rect", x0=x_anodo+0.1, y0=0, x1=ancho, y1=altura, fillcolor="#ff4757", opacity=0.18, line=dict(width=0), layer="below")
+    # Átomos (coloreados por nivel)
+    fig.add_trace(go.Scatter(
+        x=atoms[:,0], y=atoms[:,1],
+        mode="markers",
+        marker=dict(size=18, color=[COL_N[k] for k in nivel_atom], line=dict(width=0.5, color="white")),
+        opacity=0.9,
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+    # Electrones
+    fig.add_trace(go.Scatter(
+        x=pos[:,0], y=pos[:,1],
+        mode="markers",
+        marker=dict(size=6, color="#ff9cbb", line=dict(width=0)),
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+    # Fotones (siempre presente, aunque vacío)
+    alpha = phot_life / PH_SPAN if phot_pos.size else np.array([])
+    sizes = PH_SIZE * (0.8 + alpha) if phot_pos.size else np.array([])
+    fig.add_trace(go.Scatter(
+        x=phot_pos[:,0] if phot_pos.size else [],
+        y=phot_pos[:,1] if phot_pos.size else [],
+        mode="markers",
+        marker=dict(size=sizes if phot_pos.size else 1, color="#ffffff", opacity=alpha if phot_pos.size else 0, line=dict(width=0)),
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+    # Quitar ejes
+    fig.update_xaxes(visible=False, fixedrange=True)
+    fig.update_yaxes(visible=False, fixedrange=True)
+    # Mostrar sin que Streamlit cambie el tamaño
+    canvas.plotly_chart(fig, use_container_width=False)
     time.sleep(0.05)
 
     st.session_state.pos = pos
