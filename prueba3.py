@@ -72,7 +72,8 @@ def corriente_simulada(V, e_exc, esc):
 
 V_arr = np.linspace(0, 50, 500)
 I_arr = corriente_simulada(V_arr, pot_excitacion, flujo_electrones)
-I_arr[V_arr > voltaje_max] = np.nan
+
+
 with grafico:
     fig_IV, ax_IV = plt.subplots()
     fig_IV.patch.set_facecolor('#0d1c2c')            # fondo
@@ -83,8 +84,9 @@ with grafico:
     ax_IV.tick_params(colors='white')
     for s in ax_IV.spines.values(): s.set_color('white')
     ax_IV.set_xlabel("Voltaje (V)", color='white')
-    ax_IV.set_ylabel("Corriente (u.a.)", color='white')
+    ax_IV.set_ylabel("Corriente ", color='white')
     ax_IV.set_title("Curva característica I-V", color='white')
+    ax_IV.text(voltaje_max+0.5, I_arr[np.searchsorted(V_arr, voltaje_max)], f"{voltaje_max:.1f} V", color='white', size=6)
     st.pyplot(fig_IV)
 
 # ---------- GEOMETRÍA ----------
@@ -96,7 +98,7 @@ x_catodo_m,x_filamento_m,x_anodo_m,x_colector_m=np.array([x_catodo,x_filamento,x
 # ---------- ÁTOMOS (fijos) ----------
 atoms=np.column_stack([np.linspace(1,8,80),
                        np.random.uniform(0.5,altura-0.5,80)])
-ENERG_N=[0.0,4.9,6.7];T_RELAX=[0,60,120];COL_N=['#ffaa00','#ff4444','#bb88ff']
+ENERG_N=[0.0,4.9,6.7];T_RELAX=[0,20,40];COL_N=['#ffaa00','#ff4444','#bb88ff']
 
 # ---------- ESTADO PERSISTENTE ----------
 if "pos" not in st.session_state:
@@ -129,7 +131,10 @@ fig,ax=plt.subplots(figsize=(8,4));fig.patch.set_facecolor('#0d1c2c')
 canvas=st.empty()
 dt,q,m=0.07,1.6e-19,9.1e-31
 RCOL,P_INEL=0.15,0.15
-PH_SPAN,PH_SPEED,PH_SIZE=10,0.6,6
+# ------------- PARÁMETROS -------------
+PH_SPAN  = 15      # vida en frames
+PH_SPEED = 0.6     # desplazamiento vertical
+PH_SIZE  = 6       # tamaño base
 
 while st.session_state.animando:
     # --- Emisión ---
@@ -161,15 +166,19 @@ while st.session_state.animando:
                     if Ec>=dE and np.random.rand()<p_eff:
                         vel[i,0]=np.sqrt(max(0,2*(Ec-dE)/m))*FACTOR_V
                         nivel_atom[j]+=1; relax_t[j]=T_RELAX[nivel_atom[j]]; cooldown[i]=10
-                        phot_pos=np.vstack([phot_pos,at])
-                        phot_life=np.append(phot_life,PH_SPAN)
+                        
                 break
 
     # --- Relajación ---
-    relax_t=np.maximum(relax_t-1,0)
-    for j in np.where(relax_t==0)[0]:
-        if nivel_atom[j]>0:
-            nivel_atom[j]-=1; relax_t[j]=T_RELAX[nivel_atom[j]]
+    relax_t = np.maximum(relax_t-1, 0)
+    for j in np.where(relax_t == 0)[0]:
+        if nivel_atom[j] > 0:
+            # → emitir fotón al desexcitar
+            phot_pos  = np.vstack([phot_pos, atoms[j]])
+            phot_life = np.append(phot_life, PH_SPAN)
+            nivel_atom[j] -= 1
+            relax_t[j]     = T_RELAX[nivel_atom[j]]
+
 
     # --- Frenado ---
     dist_m=(x_colector_m-x_anodo_m)
@@ -180,14 +189,14 @@ while st.session_state.animando:
 
     # --- Fotones ---
     if phot_pos.size:
-        phot_pos[:,1]+=PH_SPEED
-        phot_life-=1
-        keep=phot_life>0
-        phot_pos,phot_life=phot_pos[keep],phot_life[keep]
-
-    # --- Limpiar fuera de pantalla ---
-    keep=(pos[:,0]>=0)&(pos[:,0]<=ancho)
-    pos,vel,fase,cooldown=pos[keep],vel[keep],fase[keep],cooldown[keep]
+        phot_pos[:,1] += PH_SPEED
+        phot_life     -= 1
+        keep = phot_life > 0
+        phot_pos, phot_life = phot_pos[keep], phot_life[keep]
+        # --- Limpiar fuera de pantalla ---
+        keep=(pos[:,0]>=0)&(pos[:,0]<=ancho)
+        pos,vel,fase,cooldown=pos[keep],vel[keep],fase[keep],cooldown[keep]
+    
 
     # --- Dibujar ---
     ax.clear();ax.set_xlim(0,ancho);ax.set_ylim(0,altura)
@@ -207,8 +216,18 @@ while st.session_state.animando:
                c=[COL_N[k] for k in nivel_atom],s=70,edgecolors='white',lw=0.4,alpha=0.95)
     ax.scatter(pos[:,0],pos[:,1],c='#ff9cbb',s=8,edgecolors='none')
     if phot_pos.size:
-        ax.scatter(phot_pos[:,0],phot_pos[:,1],
-                   c='#ffffaa',s=PH_SIZE,alpha=phot_life/PH_SPAN,edgecolors='none')
+        alpha  = phot_life / PH_SPAN               # de 1 → 0
+        sizes  = PH_SIZE * (0.8 + alpha)           # grande al nacer, luego ↓
+        ax.scatter(phot_pos[:,0], phot_pos[:,1],
+                c='#ffffff', s=sizes,
+                alpha=alpha, edgecolors='none')
+        for i in range(len(phot_pos)):
+            x, y = phot_pos[i]
+            alpha_trail = phot_life[i] / PH_SPAN
+            for j in range(1, 5):
+                    ax.plot([x, x], [y - j*0.2, y - (j+1)*0.2],
+                    color=(1, 1, 1, alpha_trail * (0.2 - 0.04*j)), linewidth=1)
+
     canvas.pyplot(fig);time.sleep(0.03)
 
     # --- guardar estado antes de recarga ---
@@ -223,10 +242,10 @@ while st.session_state.animando:
 
 # ---------- LEYENDA ----------
 st.markdown("""
-<span style='color:#ffaa00'>●</span> fundamental&nbsp;&nbsp;
-<span style='color:#ff4444'>●</span> 1ª excitación&nbsp;&nbsp;
-<span style='color:#bb88ff'>●</span> 2ª excitación&nbsp;&nbsp;
-<span style='color:#ffffaa'>●</span> fotón&nbsp;&nbsp;  
+<span style='color:#ffaa00'>●</span> fundamental (n=1)&nbsp;&nbsp;
+<span style='color:#ff4444'>●</span> n=2&nbsp;&nbsp;
+<span style='color:#bb88ff'>●</span> n=3&nbsp;&nbsp;
+<span style='color:#ffffff'>●</span> fotón emitido cuando el átomo se desexcita&nbsp;&nbsp;  
 <span style='color:#ffa64d'>●</span> filamento&nbsp;&nbsp; 
 <span style='color:#b0b0b0'>●</span> cátodo&nbsp;&nbsp; 
 <span style='color:#2ecc71'>●</span> ánodo&nbsp;&nbsp;   
