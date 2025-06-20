@@ -137,8 +137,8 @@ PH_SPEED = 0.6     # desplazamiento vertical
 PH_SIZE  = 6       # tamaño base
 
 # Tamaños intermedios para átomos y electrones
-ATOM_SIZE = 120  # antes 70
-ELECTRON_SIZE = 18  # antes 8
+ATOM_SIZE = 100  # tamaño intermedio
+ELECTRON_SIZE = 16  # tamaño intermedio
 
 while st.session_state.animando:
     # --- Emisión ---
@@ -231,12 +231,7 @@ while st.session_state.animando:
                     ax.plot([x, x], [y - j*0.2, y - (j+1)*0.2],
                     color=(1, 1, 1, alpha_trail * (0.2 - 0.04*j)), linewidth=1)
 
-    # --- Renderiza la figura a un buffer PNG y muestra con st.image (más rápido que st.pyplot) ---
-    import io
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches=None, dpi=120, pad_inches=0)
-    buf.seek(0)
-    canvas.image(buf, use_container_width=True)
+    canvas.pyplot(fig);time.sleep(0.04)  # pausa más corta para mayor fluidez
 
     # --- guardar estado antes de recarga ---
     st.session_state.pos       = pos
