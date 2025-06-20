@@ -228,7 +228,7 @@ while st.session_state.animando:
                     ax.plot([x, x], [y - j*0.2, y - (j+1)*0.2],
                     color=(1, 1, 1, alpha_trail * (0.2 - 0.04*j)), linewidth=1)
 
-    canvas.pyplot(fig);time.sleep(0.4)
+    canvas.pyplot(fig);time.sleep(0.1)
 
     # --- guardar estado antes de recarga ---
     st.session_state.pos       = pos
