@@ -139,9 +139,19 @@ phot_life = st.session_state.phot_life
 
 # ---------- BOTONES ----------
 if "animando" not in st.session_state: st.session_state.animando=False
-col1,col2=st.columns(2)
-if col1.button("▶️ Comenzar"): st.session_state.animando=True
-if col2.button("⏹️ Detener"):  st.session_state.animando=False
+col1, col2, col3 = st.columns(3)
+if col1.button("▶️ Comenzar"): st.session_state.animando = True
+if col2.button("⏹️ Detener"): st.session_state.animando = False
+if col3.button("🔄 Reiniciar"):
+    st.session_state.animando = False
+    st.session_state.pos       = np.empty((0,2))
+    st.session_state.vel       = np.empty((0,2))
+    st.session_state.fase      = np.empty((0,))
+    st.session_state.cooldown  = np.empty((0,))
+    st.session_state.nivel_atom= np.zeros(len(atoms),int)
+    st.session_state.relax_t   = np.zeros(len(atoms),int)
+    st.session_state.phot_pos  = np.empty((0,2))
+    st.session_state.phot_life = np.empty((0,))
 
 # ---------- FIGURA ----------
 # fig,ax=plt.subplots(figsize=(8,4));fig.patch.set_facecolor('#0d1c2c')
@@ -236,34 +246,58 @@ while st.session_state.animando:
     fig.add_trace(go.Scatter(x=xsp, y=ysp, mode="lines", line=dict(color="#ffa64d", width=4), showlegend=False, hoverinfo='skip'))
     fig.add_shape(type="line", x0=x_anodo+0.025, y0=0, x1=x_anodo+0.025, y1=altura, line=dict(color="#2ecc71", width=4, dash="dot"), layer="below")
     fig.add_shape(type="rect", x0=x_anodo+0.1, y0=0, x1=ancho, y1=altura, fillcolor="#ff4757", opacity=0.18, line=dict(width=0), layer="below")
-    # Átomos (coloreados por nivel)
+    # Átomos (coloreados por nivel) con tooltip SOLO nivel
+    atom_text = [f"Nivel: n={nivel_atom[i]+1}" for i in range(len(atoms))]
     fig.add_trace(go.Scatter(
         x=atoms[:,0], y=atoms[:,1],
         mode="markers",
         marker=dict(size=18, color=[COL_N[k] for k in nivel_atom], line=dict(width=0.5, color="white")),
         opacity=0.9,
         showlegend=False,
-        hoverinfo='skip'
+        hoverinfo='text',
+        text=atom_text
     ))
-    # Electrones
+    # Electrones con tooltip SOLO energía
+    if len(pos):
+        electron_energy = 0.5 * m * (vel[:,0]/FACTOR_V)**2 / q
+        electron_text = [f"Energía: {e:.2f} eV" for e in electron_energy]
+    else:
+        electron_text = []
     fig.add_trace(go.Scatter(
         x=pos[:,0], y=pos[:,1],
         mode="markers",
         marker=dict(size=6, color="#ff9cbb", line=dict(width=0)),
         showlegend=False,
-        hoverinfo='skip'
+        hoverinfo='text',
+        text=electron_text
     ))
     # Fotones (siempre presente, aunque vacío)
-    alpha = phot_life / PH_SPAN if phot_pos.size else np.array([])
-    sizes = PH_SIZE * (0.8 + alpha) if phot_pos.size else np.array([])
-    fig.add_trace(go.Scatter(
-        x=phot_pos[:,0] if phot_pos.size else [],
-        y=phot_pos[:,1] if phot_pos.size else [],
-        mode="markers",
-        marker=dict(size=sizes if phot_pos.size else 1, color="#ffffff", opacity=alpha if phot_pos.size else 0, line=dict(width=0)),
-        showlegend=False,
-        hoverinfo='skip'
-    ))
+    # Mejor visual: cola de destello y tamaño menor
+    PHOTON_SIZE = 3  # más chico que electrón
+    PHOTON_TRAIL = 6 # cantidad de puntos en la cola
+    if phot_pos.size:
+        for idx in range(len(phot_pos)):
+            # Cola: puntos hacia abajo, opacidad decreciente
+            trail_x = np.full(PHOTON_TRAIL, phot_pos[idx,0])
+            trail_y = phot_pos[idx,1] - np.arange(PHOTON_TRAIL)*0.12
+            trail_alpha = np.linspace(0.25, 0.01, PHOTON_TRAIL)
+            fig.add_trace(go.Scatter(
+                x=trail_x, y=trail_y,
+                mode="markers",
+                marker=dict(size=PHOTON_SIZE, color="#ffffff", opacity=trail_alpha, line=dict(width=0)),
+                showlegend=False,
+                hoverinfo='skip'))
+        # Punto principal del fotón
+        alpha = phot_life / PH_SPAN
+        fig.add_trace(go.Scatter(
+            x=phot_pos[:,0], y=phot_pos[:,1],
+            mode="markers",
+            marker=dict(size=PHOTON_SIZE, color="#ffffff", opacity=alpha, line=dict(width=0)),
+            showlegend=False,
+            hoverinfo='skip'))
+    else:
+        # Para evitar que cambie el número de trazas, siempre hay un array vacío
+        fig.add_trace(go.Scatter(x=[], y=[], mode="markers", marker=dict(size=PHOTON_SIZE, color="#ffffff", opacity=0, line=dict(width=0)), showlegend=False, hoverinfo='skip'))
     # Quitar ejes
     fig.update_xaxes(visible=False, fixedrange=True)
     fig.update_yaxes(visible=False, fixedrange=True)
