@@ -25,41 +25,24 @@ st.markdown("""
 <h3>🔬 Fundamento físico</h3>
 
 <p>
-El experimento de Franck y Hertz fue una de las primeras evidencias experimentales de que los átomos poseen <strong>niveles de energía cuantizados</strong>. Consiste en un tubo lleno de vapor de mercurio (Hg), dentro del cual se acelera un haz de electrones libres generados por <em>emisión termoiónica</em> desde un filamento caliente (cátodo). Esta emisión sigue la ley de Richardson-Dushman:
+El experimento de Franck&nbsp;y&nbsp;Hertz demuestra la <strong>cuantización</strong> de los niveles de energía atómicos.<br>
+Un filamento caliente (cátodo) emite electrones por <em>emisión termoiónica</em>, descrita por la ley de Richardson-Dushman:
 </p>
 
 <p style="text-align:center">
-J = A·T²·e<sup>−ϕ / kT</sup>
+J&nbsp;=&nbsp;A&nbsp;T²&nbsp;e<sup>−ϕ&nbsp;/&nbsp;kT</sup>
 </p>
 
 <p>
-donde <em>J</em> es la densidad de corriente de electrones emitidos, <em>T</em> la temperatura del filamento, <em>ϕ</em> el trabajo de extracción, <em>k</em> la constante de Boltzmann y <em>A</em> una constante material.
+Los electrones son acelerados mediante un voltaje <em>V<sub>acel</sub></em>, chocan con átomos de Hg y pueden perder exactamente
+<strong>4,9&nbsp;eV</strong> (excitación a <em>n&nbsp;=&nbsp;2</em>), <strong>6,7&nbsp;eV</strong> (excitación a <em>n&nbsp;=&nbsp;3</em>) y así sucesivamente, siguiendo la expresión&nbsp;ΔE&nbsp;=&nbsp;E<sub>n<sub>f</sub></sub>&nbsp;−&nbsp;E<sub>n<sub>i</sub></sub>.<br>
+Después del ánodo una barrera de frenado <em>V<sub>f</sub></em> filtra los electrones que conservan energía cinética suficiente. Al barrer <em>V<sub>acel</sub></em> se observan los picos y valles característicos en la corriente del colector.
 </p>
 
-<p>
-Una vez emitidos, los electrones son acelerados por un voltaje <em>V<sub>acel</sub></em> hacia un ánodo. En su trayecto, pueden colisionar con átomos de mercurio. Si la energía cinética del electrón coincide con la diferencia entre niveles electrónicos permitidos del átomo, puede producirse una <strong>colisión inelástica</strong>, en la que el electrón pierde una cantidad fija de energía para excitar al átomo.
-</p>
-
-<p>
-Las primeras excitaciones posibles corresponden a transiciones desde el estado fundamental a niveles superiores:
-</p>
 <ul>
-  <li><strong>4,9 eV</strong> → excitación al primer estado excitado (<em>n = 2</em>)</li>
-  <li><strong>6,7 eV</strong> → excitación al segundo estado excitado (<em>n = 3</em>)</li>
-  <li>Y así sucesivamente, para niveles <em>n ≥ 4</em>, con energía creciente</li>
+  <li>Un átomo que ya está a 4,9&nbsp;eV solo necesita 1,8&nbsp;eV adicionales para alcanzar 6,7&nbsp;eV.</li>
+  <li>Cada transición se acompaña de la emisión de un fotón&nbsp;UV; aquí lo representamos como un destello rápido.</li>
 </ul>
-
-<p>
-Cada transición electrónica hacia un nivel superior es temporal: tras un breve intervalo, el átomo tiende a desexcitarse y emitir la energía sobrante en forma de <strong>fotón ultravioleta (UV)</strong>. En la simulación, estos fotones se visualizan como destellos breves.
-</p>
-
-<p>
-Después del ánodo se encuentra una región de <strong>frenado</strong> (barrera de retención) controlada por un voltaje <em>V<sub>frenado</sub></em>. Esta zona impide que los electrones que no conservaron suficiente energía cinética lleguen al colector. Así, al aumentar <em>V<sub>acel</sub></em>, se observan aumentos y caídas periódicas en la corriente de colector, reflejando la pérdida de energía de los electrones al excitar a los átomos.
-</p>
-
-<p>
-Este comportamiento ondulatorio en la curva corriente–voltaje confirma que la energía interna de los átomos solo puede variar en valores discretos, demostrando experimentalmente la <strong>cuantización de la energía</strong>.
-</p>
 """, unsafe_allow_html=True)
 
 # ------------------------------ SLIDERS ------------------------------
@@ -80,20 +63,20 @@ with sliders:
     st.markdown(f"<span style='color:#00e6ff'>Flujo: {flujo_electrones} e⁻/frame</span>", unsafe_allow_html=True)
 
 # ------------------------------ GRÁFICO I-V ------------------------------
-def corriente_simulada(V, e_exc, esc, V_f):
+def corriente_simulada(V, e_exc, esc):
     V = np.array(V)
-    V_efectivo = np.maximum(0, V - V_f)
     A, B, alpha = 1.0, 0.7, 1.2
-    I = A*V_efectivo**alpha * (1 - B*np.sin(np.pi*V_efectivo/e_exc)**2)
-    I[V_efectivo<=0] = 0
-    return I * esc
+    I = A*V**alpha * (1 - B*np.sin(np.pi*V/e_exc)**2)
+    I[V<=0] = 0
+    return I*esc
 
 V_arr = np.linspace(0, 50, 500)
-I_arr = corriente_simulada(V_arr, pot_excitacion, flujo_electrones, voltaje_frenado)
+I_arr = corriente_simulada(V_arr, pot_excitacion, flujo_electrones)
+
 
 with grafico:
     fig_IV, ax_IV = plt.subplots()
-    fig_IV.patch.set_facecolor('#0d1c2c')
+    fig_IV.patch.set_facecolor('#0d1c2c')            # fondo
     ax_IV.set_facecolor('#0d1c2c')
     ax_IV.plot(V_arr, I_arr, color="#00e6ff", linewidth=2)
     ax_IV.axvline(voltaje_max, color="#ff4d4d", linestyle="--", linewidth=1.2)
@@ -104,7 +87,8 @@ with grafico:
     ax_IV.set_ylabel("Corriente ", color='white')
     ax_IV.set_title("Curva característica I-V", color='white')
     ax_IV.text(voltaje_max+0.5, I_arr[np.searchsorted(V_arr, voltaje_max)], f"{voltaje_max:.1f} V", color='white', size=6)
-    st.pyplot(fig_IV, clear_figure=True)
+    st.pyplot(fig_IV)
+
 # ---------- GEOMETRÍA ----------
 ancho,altura=10,5
 x_catodo,x_filamento,x_anodo,x_colector=0.5,0.2,8.0,10

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Simulador Franck-Hertz</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  <style>
+    body { background: #0d1c2c; color: #fff; font-family: 'Segoe UI', sans-serif; }
+    .block-container { padding-left: 1rem; padding-right: 1rem; max-width: 80% !important; }
+    .stApp { background-color: #0d1c2c; }
+    h1, h2, h3, label, .stMarkdown, .css-qrbaxs { color: #ffffff !important; font-family: 'Segoe UI', sans-serif; }
+    .main-flex { display: flex; flex-direction: row; justify-content: center; align-items: flex-start; max-width: 1200px; margin: 0 auto; gap: 2rem; }
+    .controls-col { flex: 1; min-width: 260px; max-width: 340px; }
+    .controls { background: #102237; border-radius: 10px; padding: 1em; margin-bottom: 1em; }
+    .controls label { font-weight: bold; color: #fff; }
+    .legend { margin: 1em auto; max-width: 80%; }
+    .legend span { margin-right: 1.5em; font-size: 1.1em; }
+    .btn { background: #102237; color: #e8e8ea !important; border: 1px solid #445; border-radius: 8px; font-weight: bold; padding: 0.5em 1em; cursor: pointer; }
+    .btn:hover { background: #334a69; color: #fff !important; }
+    h1, h2, h3 { color: #fff; }
+    .teoria { max-width: 80%; margin: 0 auto 1em auto; background: #102237; border-radius: 10px; padding: 1em; }
+    .stSlider { background-color: #102237; padding: 1rem; border: 1px solid #445; border-radius: 10px; margin-bottom: 1rem; }
+    .stSlider label { color: #ffffff !important; font-weight: bold; }
+    input[type=range]::-webkit-slider-thumb { background: #00e6ff; }
+    input[type=range]::-moz-range-thumb { background: #00e6ff; }
+    input[type=range]::-ms-thumb { background: #00e6ff; }
+    input[type=range] { accent-color: #00e6ff; }
+    .right-col { flex: 2; min-width: 400px; display: flex; flex-direction: column; align-items: center; }
+    #sketch-holder { width: 800px; height: 400px; display: flex; justify-content: center; align-items: center; margin-bottom: 1.5em; }
+    #iv-curve { width: 400px; margin: 0 auto; }
+    @media (max-width: 1000px) {
+      .main-flex { flex-direction: column; align-items: stretch; }
+      .right-col, #sketch-holder, #iv-curve { width: 100% !important; min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="teoria">
+    <h1>Experimento de Franck y Hertz</h1>
+    <h3>🔬 Fundamento físico</h3>
+    <p>
+      El experimento de Franck&nbsp;y&nbsp;Hertz demuestra la <strong>cuantización</strong> de los niveles de energía atómicos.<br>
+      Un filamento caliente (cátodo) emite electrones por <em>emisión termoiónica</em>, descrita por la ley de Richardson-Dushman:
+    </p>
+    <p style="text-align:center">
+      J&nbsp;=&nbsp;A&nbsp;T²&nbsp;e<sup>−ϕ&nbsp;/&nbsp;kT</sup>
+    </p>
+    <p>
+      Los electrones son acelerados mediante un voltaje <em>V<sub>acel</sub></em>, chocan con átomos de Hg y pueden perder exactamente
+      <strong>4,9&nbsp;eV</strong> (excitación a <em>n&nbsp;=&nbsp;2</em>), <strong>6,7&nbsp;eV</strong> (excitación a <em>n&nbsp;=&nbsp;3</em>) y así sucesivamente, siguiendo la expresión&nbsp;ΔE&nbsp;=&nbsp;E<sub>n<sub>f</sub></sub>&nbsp;−&nbsp;E<sub>n<sub>i</sub></sub>.<br>
+      Después del ánodo una barrera de frenado <em>V<sub>f</sub></em> filtra los electrones que conservan energía cinética suficiente. Al barrer <em>V<sub>acel</sub></em> se observan los picos y valles característicos en la corriente del colector.
+    </p>
+    <ul>
+      <li>Un átomo que ya está a 4,9&nbsp;eV solo necesita 1,8&nbsp;eV adicionales para alcanzar 6,7&nbsp;eV.</li>
+      <li>Cada transición se acompaña de la emisión de un fotón&nbsp;UV; aquí lo representamos como un destello rápido.</li>
+    </ul>
+  </div>
+  <div class="main-flex">
+    <div class="controls-col">
+      <div class="controls stSlider">
+        <label>Potencial de excitación (eV): <span id="pot_excitacion_val">4.9</span></label>
+        <input type="range" id="pot_excitacion" min="0.1" max="20" step="0.1" value="4.9"><br>
+        <label>Voltaje de aceleración (V): <span id="voltaje_max_val">8.0</span></label>
+        <input type="range" id="voltaje_max" min="0" max="50" step="0.1" value="8.0"><br>
+        <label>Voltaje de frenado (V): <span id="voltaje_frenado_val">1.0</span></label>
+        <input type="range" id="voltaje_frenado" min="0" max="10" step="0.1" value="1.0"><br>
+        <label>Temperatura del filamento (K): <span id="temp_filamento_val">2000</span></label>
+        <input type="range" id="temp_filamento" min="1000" max="3000" step="100" value="2000"><br>
+        <span id="flujo"></span>
+        <div style="display:flex; gap:1em; margin-top:1em;">
+          <button class="btn" id="startBtn">▶️ Comenzar</button>
+          <button class="btn" id="stopBtn">⏹️ Detener</button>
+        </div>
+      </div>
+    </div>
+    <div class="right-col">
+      <div id="sketch-holder"></div>
+      <div id="iv-curve"></div>
+    </div>
+  </div>
+  <div class="legend">
+    <span style="color:#ffaa00">●</span> fundamental (n=1)&nbsp;&nbsp;
+    <span style="color:#ff4444">●</span> n=2&nbsp;&nbsp;
+    <span style="color:#bb88ff">●</span> n=3&nbsp;&nbsp;
+    <span style="color:#ffffff">●</span> fotón emitido cuando el átomo se desexcita&nbsp;&nbsp;  
+    <span style="color:#ffa64d">●</span> filamento&nbsp;&nbsp; 
+    <span style="color:#b0b0b0">●</span> cátodo&nbsp;&nbsp; 
+    <span style="color:#2ecc71">●</span> ánodo&nbsp;&nbsp;   
+  </div>
+  <script>
+    // Parámetros iniciales
+    let pot_excitacion = 4.9;
+    let voltaje_max = 8.0;
+    let voltaje_frenado = 1.0;
+    let temp_filamento = 2000;
+    let flujo_electrones = 1;
+    let animando = false;
+
+    // Elementos de UI
+    function updateUI() {
+      document.getElementById('pot_excitacion_val').textContent = pot_excitacion;
+      document.getElementById('voltaje_max_val').textContent = voltaje_max;
+      document.getElementById('voltaje_frenado_val').textContent = voltaje_frenado;
+      document.getElementById('temp_filamento_val').textContent = temp_filamento;
+      document.getElementById('flujo').innerHTML = `<span style="color:#00e6ff">Flujo: ${flujo_electrones} e⁻/frame</span>`;
+    }
+
+    document.getElementById('pot_excitacion').oninput = function() {
+      pot_excitacion = parseFloat(this.value);
+      updateUI();
+      updateIV();
+    };
+    document.getElementById('voltaje_max').oninput = function() {
+      voltaje_max = parseFloat(this.value);
+      updateUI();
+      updateIV();
+    };
+    document.getElementById('voltaje_frenado').oninput = function() {
+      voltaje_frenado = parseFloat(this.value);
+      updateUI();
+    };
+    document.getElementById('temp_filamento').oninput = function() {
+      temp_filamento = parseInt(this.value);
+      updateUI();
+      updateFlujo();
+      updateIV();
+    };
+    document.getElementById('startBtn').onclick = function() { animando = true; };
+    document.getElementById('stopBtn').onclick = function() { animando = false; };
+
+    // Cálculo de flujo de electrones
+    function updateFlujo() {
+      let phi = 4.5, kB = 8.617e-5, A = 1.0e6;
+      let J = A * temp_filamento ** 2 * Math.exp(-phi / (kB * temp_filamento));
+      flujo_electrones = Math.max(1, Math.floor(J * 1e-4));
+      updateUI();
+    }
+    updateFlujo();
+
+    // Gráfico I-V
+    function updateIV() {
+      let V_arr = [];
+      let I_arr = [];
+      for (let v = 0; v <= 50; v += 0.1) V_arr.push(v);
+      for (let v of V_arr) {
+        let A = 1.0, B = 0.7, alpha = 1.2;
+        let I = A * Math.pow(v, alpha) * (1 - B * Math.pow(Math.sin(Math.PI * v / pot_excitacion), 2));
+        if (v <= 0) I = 0;
+        I_arr.push(I * flujo_electrones);
+      }
+      // Dibuja el gráfico como SVG
+      let w = 400, h = 180, margin = 40;
+      let maxI = Math.max(...I_arr);
+      let svg = `<svg width="${w}" height="${h}" style="background:#0d1c2c"><g>`;
+      // Ejes
+      svg += `<line x1="${margin}" y1="${h-margin}" x2="${w-margin}" y2="${h-margin}" stroke="white" stroke-width="1"/>`;
+      svg += `<line x1="${margin}" y1="${h-margin}" x2="${margin}" y2="${margin}" stroke="white" stroke-width="1"/>`;
+      // Curva
+      let path = "";
+      for (let i = 0; i < V_arr.length; i++) {
+        let x = margin + (w - 2 * margin) * (V_arr[i] / 50);
+        let y = h - margin - (h - 2 * margin) * (I_arr[i] / maxI);
+        path += (i === 0 ? "M" : "L") + x + " " + y + " ";
+      }
+      svg += `<path d="${path}" stroke="#00e6ff" fill="none" stroke-width="2"/>`;
+      // Línea de voltaje seleccionado
+      let xV = margin + (w - 2 * margin) * (voltaje_max / 50);
+      svg += `<line x1="${xV}" y1="${margin}" x2="${xV}" y2="${h-margin}" stroke="#ff4d4d" stroke-dasharray="4" stroke-width="2"/>`;
+      svg += `<text x="${xV+5}" y="${margin+15}" fill="white" font-size="12">${voltaje_max.toFixed(1)} V</text>`;
+      // Etiquetas
+      svg += `<text x="${w/2-40}" y="${h-5}" fill="white" font-size="13">Voltaje (V)</text>`;
+      svg += `<text x="5" y="${h/2}" fill="white" font-size="13" transform="rotate(-90 15,${h/2})">Corriente</text>`;
+      svg += `<text x="${w/2-60}" y="25" fill="white" font-size="15">Curva característica I-V</text>`;
+      svg += "</g></svg>";
+      document.getElementById('iv-curve').innerHTML = svg;
+    }
+    updateIV();
+
+    // --- Simulación principal ---
+    let ancho = 10, altura = 5;
+    let x_catodo = 0.5, x_filamento = 0.2, x_anodo = 8.0, x_colector = 10;
+    let escala = 60, FACTOR_V = 1e-6;
+    let x_catodo_m = x_catodo * escala, x_filamento_m = x_filamento * escala, x_anodo_m = x_anodo * escala, x_colector_m = x_colector * escala;
+    let atoms = [];
+    let ENERG_N = [0.0, 4.9, 6.7], T_RELAX = [0, 20, 40], COL_N = ['#ffaa00','#ff4444','#bb88ff'];
+    let pos = [], vel = [], fase = [], cooldown = [];
+    let nivel_atom = [], relax_t = [];
+    let phot_pos = [], phot_life = [];
+    let PH_SPAN = 15, PH_SPEED = 0.6, PH_SIZE = 6;
+    let dt = 0.07, q = 1.6e-19, m = 9.1e-31, RCOL = 0.15 * escala, P_INEL = 0.15;
+
+    function resetSim() {
+      atoms = [];
+      for (let i = 0; i < 80; i++) {
+        atoms.push([map(i,0,79,1*escala,8*escala), random(0.5*escala,(altura-0.5)*escala)]);
+      }
+      nivel_atom = Array(80).fill(0);
+      relax_t = Array(80).fill(0);
+      pos = [];
+      vel = [];
+      fase = [];
+      cooldown = [];
+      phot_pos = [];
+      phot_life = [];
+    }
+    resetSim();
+
+    function setup() {
+      let cnv = createCanvas(800, 400);
+      cnv.parent('sketch-holder');
+      frameRate(60);
+    }
+
+    function draw() {
+      background('#0d1c2c');
+      // --- Emisión ---
+      if (animando) {
+        let n = flujo_electrones;
+        for (let i = 0; i < n; i++) {
+          pos.push([x_filamento*escala, random(0.5*escala,(altura-0.5)*escala)]);
+          let v0 = Math.sqrt(2*q*voltaje_max/m)*FACTOR_V*escala;
+          vel.push([v0, 0]);
+          fase.push(random(0,2*Math.PI));
+          cooldown.push(0);
+        }
+      }
+      // --- Movimiento ---
+      for (let i = 0; i < pos.length; i++) {
+        pos[i][0] += vel[i][0]*dt;
+        pos[i][1] += 0.04*escala*Math.sin(4*pos[i][0]/escala+fase[i]);
+      }
+      // --- Colisiones ---
+      for (let i = 0; i < pos.length; i++) {
+        if (cooldown[i]>0) { cooldown[i]--; continue; }
+        for (let j = 0; j < atoms.length; j++) {
+          let dx = pos[i][0]-atoms[j][0], dy = pos[i][1]-atoms[j][1];
+          if (dx*dx+dy*dy < RCOL*RCOL) {
+            let Ec = 0.5*m*Math.pow(vel[i][0]/(FACTOR_V*escala),2);
+            let lvl = nivel_atom[j];
+            if (lvl<2) {
+              let dE = (ENERG_N[lvl+1]-ENERG_N[lvl])*q;
+              let p_eff = P_INEL * (1 - dE / Ec);
+              p_eff = Math.max(0, Math.min(p_eff, 1));
+              if (Ec>=dE && Math.random()<p_eff) {
+                vel[i][0]=Math.sqrt(Math.max(0,2*(Ec-dE)/m))*FACTOR_V*escala;
+                nivel_atom[j]++;
+                relax_t[j]=T_RELAX[nivel_atom[j]];
+                cooldown[i]=10;
+              }
+            }
+            break;
+          }
+        }
+      }
+      // --- Relajación ---
+      for (let j = 0; j < relax_t.length; j++) {
+        relax_t[j] = Math.max(relax_t[j]-1, 0);
+        if (relax_t[j] === 0 && nivel_atom[j] > 0) {
+          phot_pos.push([atoms[j][0], atoms[j][1]]);
+          phot_life.push(PH_SPAN);
+          nivel_atom[j]--;
+          relax_t[j]=T_RELAX[nivel_atom[j]];
+        }
+      }
+      // --- Frenado ---
+      let dist_m = x_colector_m-x_anodo_m;
+      if (dist_m>0) {
+        let dv = (-q*voltaje_frenado/m)/dist_m*Math.pow(FACTOR_V*escala,2)*dt*0.5;
+        for (let i = 0; i < pos.length; i++) {
+          if (pos[i][0]>=x_anodo*escala && pos[i][0]<=x_colector*escala) {
+            vel[i][0] += dv;
+          }
+        }
+      }
+      // --- Fotones ---
+      for (let i = phot_pos.length-1; i >= 0; i--) {
+        phot_pos[i][1] += PH_SPEED*escala*dt;
+        phot_life[i]--;
+        if (phot_life[i]<=0) {
+          phot_pos.splice(i,1);
+          phot_life.splice(i,1);
+        }
+      }
+      // --- Limpiar electrones fuera de pantalla ---
+      for (let i = pos.length-1; i >= 0; i--) {
+        if (pos[i][0]<0 || pos[i][0]>ancho*escala) {
+          pos.splice(i,1); vel.splice(i,1); fase.splice(i,1); cooldown.splice(i,1);
+        }
+      }
+      // --- Dibujar geometría ---
+      noStroke();
+      fill('#b0b0b0'); rect(x_catodo*escala,0,0.05*escala,altura*escala);
+      // filamento espiral
+      stroke('#ffa64d'); strokeWeight(2); noFill();
+      beginShape();
+      for (let t = 0; t <= 1; t += 1/400) {
+        let ysp = 0.8*escala+(altura*escala-1.6*escala)*t;
+        let xsp = x_filamento*escala+0.15*escala*Math.sin(2*Math.PI*15*t);
+        vertex(xsp,ysp);
+      }
+      endShape();
+      // ánodo punteado
+      stroke('#2ecc71'); strokeWeight(2); drawingContext.setLineDash([6,6]);
+      line((x_anodo+0.025)*escala,0,(x_anodo+0.025)*escala,altura*escala);
+      drawingContext.setLineDash([]);
+      // zona de frenado
+      noStroke(); fill(255,71,87,45);
+      rect((x_anodo+0.1)*escala,0,(ancho-x_anodo-0.1)*escala,altura*escala);
+      // átomos
+      for (let j = 0; j < atoms.length; j++) {
+        stroke('white'); strokeWeight(0.8);
+        fill(COL_N[nivel_atom[j]]);
+        ellipse(atoms[j][0],atoms[j][1],18,18);
+      }
+      // electrones
+      noStroke(); fill('#ff9cbb');
+      for (let i = 0; i < pos.length; i++) {
+        ellipse(pos[i][0],pos[i][1],5,5);
+      }
+      // fotones
+      for (let i = 0; i < phot_pos.length; i++) {
+        let alpha = phot_life[i]/PH_SPAN;
+        let size = PH_SIZE*(0.8+alpha)*2;
+        fill(255,255,255,255*alpha);
+        ellipse(phot_pos[i][0],phot_pos[i][1],size,size);
+        // estela
+        for (let j = 1; j < 5; j++) {
+          stroke(255,255,255,255*alpha*(0.2-0.04*j));
+          line(phot_pos[i][0], phot_pos[i][1]-j*12, phot_pos[i][0], phot_pos[i][1]-(j+1)*12);
+        }
+        noStroke();
+      }
+    }
+  </script>
+</body>
+</html>
